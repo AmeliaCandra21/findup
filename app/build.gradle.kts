@@ -3,7 +3,6 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
-    id("com.google.gms.google-services")
 }
 
 android {
@@ -43,7 +42,19 @@ android {
 
 dependencies {
 
-    // ViewModel
+    // Compose UI
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+
+    // Material 3
+    implementation("androidx.compose.material3:material3")
+
+    // Activity Compose
+    implementation("androidx.activity:activity-compose:1.9.3")
+
+    // Lifecycle
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
 // Navigation
@@ -51,6 +62,7 @@ dependencies {
 
 // Room (offline)
     implementation("androidx.room:room-runtime:2.6.1")
+    implementation(libs.androidx.compose.foundation.layout)
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
 
@@ -61,4 +73,10 @@ dependencies {
 
 // Image (foto barang)
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // Icons
+    implementation("androidx.compose.material:material-icons-extended")
+
+    // Debug
+    debugImplementation("androidx.compose.ui:ui-tooling")
 }
