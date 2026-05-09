@@ -52,7 +52,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.example.findup.home.HomeScreen
+import com.example.findup.screen.HomeScreen
+import com.example.findup.screen.LoginScreen
 import com.example.findup.ui.theme.FindUpTheme
 
 class MainActivity : ComponentActivity() {
@@ -61,7 +62,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FindUpTheme {
-                HomeScreen()
+                LoginScreen()
             }
         }
     }
