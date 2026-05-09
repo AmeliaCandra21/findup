@@ -29,17 +29,18 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.findup.ui.theme.*
 
 // ─── Warna ────────────────────────────────────────────────────────────────────
-private val PinkPrimary       = Color(0xFFF08080)
-private val PinkBubble        = Color(0xFFF4A0A0)
-private val PinkLight         = Color(0xFFFFF0F0)
-private val PinkInputBg       = Color(0xFFFFF0F0)
-private val ReceiverBubble    = Color.White
-private val BackgroundColor   = Color(0xFFFAFAFA)
-private val TextPrimary       = Color(0xFF212121)
-private val TextSecondary     = Color(0xFF9E9E9E)
-private val TopBarColor       = Color.White
+//private val PinkPrimary       = Color(0xFFF08080)
+//private val PinkBubble        = Color(0xFFF4A0A0)
+//private val PinkLight         = Color(0xFFFFF0F0)
+//private val PinkInputBg       = Color(0xFFFFF0F0)
+//private val ReceiverBubble    = Color.White
+//private val BackgroundColor   = Color(0xFFFAFAFA)
+//private val TextPrimary       = Color(0xFF212121)
+//private val TextSecondary     = Color(0xFF9E9E9E)
+//private val TopBarColor       = Color.White
 
 // ─── Model ────────────────────────────────────────────────────────────────────
 enum class MessageType { SENT, RECEIVED }

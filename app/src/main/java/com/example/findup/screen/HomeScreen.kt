@@ -71,7 +71,6 @@ val samplePosts = listOf(
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
 
-    var selectedTab by remember { mutableStateOf(0) }
     var selectedFilter by remember { mutableStateOf(0) }  // 0=Semua 1=Hilang 2=Temu
 
     val filters = listOf("Semua", "Hilang", "Temu")
@@ -99,9 +98,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         },
 
         // ── Bottom Navigation ────────────────────────────────────────
-        bottomBar = {
-            BottomNavBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
-        }
+
     ) { innerPadding ->
 
         Column(

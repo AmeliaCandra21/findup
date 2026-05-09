@@ -1,4 +1,4 @@
-package com.example.app.ui.screen
+package com.example.findup.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -25,15 +25,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.findup.ui.theme.*
 
 // ─── Warna tema ───────────────────────────────────────────────────────────────
-private val PinkPrimary   = Color(0xFFE57373)
-private val PinkLight     = Color(0xFFFFCDD2)
-private val PinkSurface   = Color(0xFFFFF5F5)
-private val TextPrimary   = Color(0xFF212121)
-private val TextSecondary = Color(0xFF757575)
-private val DividerColor  = Color(0xFFEEEEEE)
-private val White         = Color.White
+//private val PinkPrimary   = Color(0xFFE57373)
+//private val PinkLight     = Color(0xFFFFCDD2)
+//private val PinkSurface   = Color(0xFFFFF5F5)
+//private val TextPrimary   = Color(0xFF212121)
+//private val TextSecondary = Color(0xFF757575)
+//private val DividerColor  = Color(0xFFEEEEEE)
+//private val White         = Color.White
 
 // ─── Data model ───────────────────────────────────────────────────────────────
 data class UserProfile(
@@ -83,9 +84,6 @@ fun ProfileScreen(
                 )
             )
         },
-        bottomBar = {
-            BottomNavigationBar()
-        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
