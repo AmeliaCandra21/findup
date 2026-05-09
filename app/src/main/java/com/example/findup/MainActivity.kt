@@ -56,6 +56,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.findup.screen.EditLaporanScreen
 import com.example.findup.screen.LoginScreen
 import com.example.findup.screen.RegistrasiScreen
 import com.example.findup.ui.theme.FindUpTheme
@@ -66,7 +67,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FindUpTheme {
-                RegistrasiScreen()
+                EditLaporanScreen()
             }
         }
     }
