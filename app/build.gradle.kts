@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -42,41 +42,47 @@ android {
 
 dependencies {
 
+    // Compose BOM (menentukan versi semua library Compose secara otomatis)
+    val composeBom = platform("androidx.compose:compose-bom:2024.10.01")
+    implementation(composeBom)
+    debugImplementation(composeBom)
+
     // Compose UI
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
 
     // Material 3
     implementation("androidx.compose.material3:material3")
 
-    // Activity Compose
-    implementation("androidx.activity:activity-compose:1.9.3")
+    // Material Icons Extended
+    implementation("androidx.compose.material:material-icons-extended")
 
-    // Lifecycle
+    // Activity & Lifecycle
+    implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
-// Navigation
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.8.4")
 
-// Room (offline)
+    // Room
     implementation("androidx.room:room-runtime:2.6.1")
-    implementation(libs.androidx.compose.foundation.layout)
-    ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
+    implementation(libs.androidx.compose.foundation.layout)
 
-// Firebase (online & multi user)
+    // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
 
-// Image (foto barang)
+    // Coil
     implementation("io.coil-kt:coil-compose:2.6.0")
 
-    // Icons
-    implementation("androidx.compose.material:material-icons-extended")
-
-    // Debug
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    // Testing
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 }
