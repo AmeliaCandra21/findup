@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FindUpTheme {
-                AppNav()
+                LoginScreen()
             }
         }
     }
