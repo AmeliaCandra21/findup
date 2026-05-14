@@ -29,6 +29,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 
 // ── Warna tema FindUp ────────────────────────────────────────────────
@@ -69,7 +71,10 @@ val samplePosts = listOf(
 // MAIN SCREEN
 // ────────────────────────────────────────────────────────────────────
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
+fun HomeScreen(
+    navController: NavController,
+    modifier: Modifier = Modifier
+) {
 
     var selectedFilter by remember { mutableStateOf(0) }  // 0=Semua 1=Hilang 2=Temu
 
@@ -87,7 +92,9 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         // ── FAB ─────────────────────────────────────────────────────
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* navigasi ke form lapor */ },
+                onClick = {
+                    navController.navigate("TambahLaporan")
+                },
                 containerColor = FindUpPink,
                 contentColor = Color.White,
                 shape = CircleShape,
@@ -436,7 +443,9 @@ fun BottomNavBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun HomeScreenPreview() {
+
+    val navController = rememberNavController()
     MaterialTheme {
-        HomeScreen()
+        HomeScreen(navController)
     }
 }

@@ -14,6 +14,7 @@ import androidx.navigation.compose.*
 import com.example.findup.screen.HomeScreen
 import com.example.findup.screen.LaporanScreen
 import com.example.findup.screen.ProfileScreen
+import com.example.findup.screen.TambahLaporanScreen
 
 data class BottomNavItem(
     val route: String,
@@ -73,13 +74,16 @@ fun AppNav() {
             modifier         = Modifier.padding(paddingValues)
         ) {
             composable("home") {
-                HomeScreen()
+                HomeScreen(navController = navController)
             }
             composable("laporan") {
                 LaporanScreen()
             }
             composable("profil") {
                 ProfileScreen()
+            }
+            composable("TambahLaporan") {
+                TambahLaporanScreen()
             }
         }
     }
