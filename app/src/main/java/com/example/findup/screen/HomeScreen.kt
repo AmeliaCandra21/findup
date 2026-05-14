@@ -93,7 +93,7 @@ fun HomeScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    navController.navigate("TambahLaporan")
+//                    navController.navigate("TambahLaporan")
                 },
                 containerColor = FindUpPink,
                 contentColor = Color.White,

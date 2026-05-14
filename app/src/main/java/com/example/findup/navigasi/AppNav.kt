@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavController
 import androidx.navigation.compose.*
 import com.example.findup.screen.HomeScreen
 import com.example.findup.screen.LaporanScreen
@@ -23,7 +24,7 @@ data class BottomNavItem(
 )
 
 @Composable
-fun AppNav() {
+fun AppNav(rootNavController: NavController) {
     val navController = rememberNavController()
 
     val items = listOf(
@@ -80,7 +81,7 @@ fun AppNav() {
                 LaporanScreen()
             }
             composable("profil") {
-                ProfileScreen()
+                ProfileScreen(navController = rootNavController)
             }
             composable("TambahLaporan") {
                 TambahLaporanScreen()
