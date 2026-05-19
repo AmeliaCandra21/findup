@@ -11,11 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.*
-import com.example.findup.screen.HomeScreen
-import com.example.findup.screen.LaporanScreen
-import com.example.findup.screen.ProfileScreen
-import com.example.findup.screen.TambahLaporanScreen
+import androidx.navigation.navArgument
+import com.example.findup.screen.*
 
 data class BottomNavItem(
     val route: String,
@@ -48,15 +47,8 @@ fun AppNav(rootNavController: NavController) {
                                 launchSingleTop = true
                             }
                         },
-                        icon = {
-                            Icon(
-                                imageVector        = item.icon,
-                                contentDescription = item.title
-                            )
-                        },
-                        label = {
-                            Text(item.title)
-                        },
+                        icon = { Icon(item.icon, contentDescription = item.title) },
+                        label = { Text(item.title) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor   = Color(0xFFF08080),
                             selectedTextColor   = Color(0xFFF08080),
@@ -78,13 +70,64 @@ fun AppNav(rootNavController: NavController) {
                 HomeScreen(navController = navController)
             }
             composable("laporan") {
-                LaporanScreen()
+                LaporanScreen(
+                    navController = navController
+                )
             }
             composable("profil") {
                 ProfileScreen(navController = rootNavController)
             }
             composable("TambahLaporan") {
-                TambahLaporanScreen()
+                TambahLaporanScreen(
+                    onBackClick = { navController.popBackStack() } // ← cukup popBackStack saja
+                )
+            }
+            composable(
+                route = "EditLaporan/{laporanId}",
+                arguments = listOf(navArgument("laporanId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val laporanId = backStackEntry.arguments?.getString("laporanId") ?: ""
+                EditLaporanScreen(
+                    laporanId = laporanId,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = "DetailBarang/{laporanId}",
+                arguments = listOf(navArgument("laporanId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val laporanId = backStackEntry.arguments?.getString("laporanId") ?: ""
+                DetailBarangScreen(
+                    laporanId = laporanId,
+                    onBackClick = { navController.popBackStack() },
+                    onChatClick = { userId, username, namaBarang, fotoUrl ->
+                        navController.navigate("Chat/$userId/$username/$namaBarang/$fotoUrl")
+                    }
+                )
+            }
+            composable(
+                route = "Chat/{userId}/{username}/{namaBarang}/{fotoUrl}",
+                arguments = listOf(
+                    navArgument("userId") { type = NavType.StringType },
+                    navArgument("username") { type = NavType.StringType },
+                    navArgument("namaBarang") { type = NavType.StringType },
+                    navArgument("fotoUrl") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val userId     = backStackEntry.arguments?.getString("userId") ?: ""
+                val username   = backStackEntry.arguments?.getString("username") ?: ""
+                val namaBarang = backStackEntry.arguments?.getString("namaBarang") ?: ""
+                val fotoUrl    = backStackEntry.arguments?.getString("fotoUrl") ?: ""
+                ChatScreen(
+                    contactName  = username,
+                    contactPhoto = fotoUrl.ifEmpty { null },
+                    barangTemuan = com.example.findup.screen.ItemBaanTemuan(
+                        title    = "Tentang: $namaBarang",
+                        desc     = "Hubungi pelapor untuk info lebih lanjut",
+                        imageUrl = fotoUrl.ifEmpty { null }
+                    ),
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
     }

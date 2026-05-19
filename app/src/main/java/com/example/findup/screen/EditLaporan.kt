@@ -1,5 +1,8 @@
 package com.example.findup.screen
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,15 +22,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.example.findup.viewmodel.LaporanViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditLaporanScreen(
-    onBackClick: () -> Unit = {}
+    laporanId: String = "",
+    onBackClick: () -> Unit = {},
+    viewModel: LaporanViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val pinkButton = Color(0xFFEFA7A9)
     val grayText = Color(0xFF888888)
     val grayField = Color(0xFFF5F5F5)
@@ -38,8 +49,36 @@ fun EditLaporanScreen(
     var kategori by remember { mutableStateOf("") }
     var deskripsi by remember { mutableStateOf("") }
     var lokasi by remember { mutableStateOf("") }
+    var fotoUri by remember { mutableStateOf<Uri?>(null) }
+    var existingFotoUrl by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(true) }
+    var isUploading by remember { mutableStateOf(false) }
+
     val datePickerState = rememberDatePickerState()
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri -> fotoUri = uri }
+
+    LaunchedEffect(laporanId) {
+        if (laporanId.isNotEmpty()) {
+            viewModel.getLaporanById(laporanId) { laporan ->
+                laporan?.let {
+                    namaBarang = it.namaBarang
+                    tanggal = it.tanggal
+                    noTelepon = it.noTelepon
+                    kategori = it.kategori
+                    deskripsi = it.deskripsi
+                    lokasi = it.lokasi
+                    existingFotoUrl = it.fotoUrl
+                }
+                isLoading = false
+            }
+        } else {
+            isLoading = false
+        }
+    }
 
     if (showDatePicker) {
         DatePickerDialog(
@@ -64,24 +103,22 @@ fun EditLaporanScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "Edit Laporan",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 18.sp
-                    )
-                },
+                title = { Text("Edit Laporan", fontWeight = FontWeight.SemiBold, fontSize = 18.sp) },
                 navigationIcon = {
-                    IconButton(onClick = { onBackClick() }) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Kembali"
-                        )
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
                     }
                 }
             )
         }
     ) { paddingValues ->
+
+        if (isLoading) {
+            Box(Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = pinkButton)
+            }
+            return@Scaffold
+        }
 
         Column(
             modifier = Modifier
@@ -90,203 +127,229 @@ fun EditLaporanScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-
             // Foto Barang
             Text(text = "Foto Barang", fontSize = 14.sp, color = grayText)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(150.dp)
+                    .height(160.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(grayField)
                     .border(1.dp, Color(0xFFEEEEEE), RoundedCornerShape(12.dp))
-                    .clickable { },
+                    .clickable { if (!isUploading) galleryLauncher.launch("image/*") },
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Outlined.CloudUpload,
-                        contentDescription = null,
-                        tint = grayText,
-                        modifier = Modifier.size(36.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "Ketuk untuk unggah foto", color = grayText, fontSize = 13.sp)
+                when {
+                    fotoUri != null -> {
+                        AsyncImage(
+                            model = fotoUri,
+                            contentDescription = "Foto Baru",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))
+                        )
+                        Box(
+                            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.4f)).padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) { Text("Ketuk untuk ganti foto", color = Color.White, fontSize = 12.sp) }
+                    }
+                    existingFotoUrl.isNotEmpty() -> {
+                        AsyncImage(
+                            model = existingFotoUrl,
+                            contentDescription = "Foto Barang",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))
+                        )
+                        Box(
+                            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.4f)).padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) { Text("Ketuk untuk ganti foto", color = Color.White, fontSize = 12.sp) }
+                    }
+                    else -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Outlined.CloudUpload, null, tint = grayText, modifier = Modifier.size(36.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Ketuk untuk unggah foto", color = grayText, fontSize = 13.sp)
+                        }
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Nama Barang
             Text(text = "Nama Barang", fontSize = 14.sp, color = grayText)
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
-                value = namaBarang,
-                onValueChange = { namaBarang = it },
+                value = namaBarang, onValueChange = { namaBarang = it },
                 placeholder = { Text("Contoh: Dompet Kulit Cokelat", color = Color.LightGray) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color(0xFFEEEEEE),
-                    focusedBorderColor = pinkButton,
-                    unfocusedContainerColor = grayField,
-                    focusedContainerColor = grayField
+                    unfocusedBorderColor = Color(0xFFEEEEEE), focusedBorderColor = pinkButton,
+                    unfocusedContainerColor = grayField, focusedContainerColor = grayField
                 )
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Tanggal Kejadian
             Text(text = "Tanggal Kejadian", fontSize = 14.sp, color = grayText)
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
-                value = tanggal,
-                onValueChange = {},
-                readOnly = true,
+                value = tanggal, onValueChange = {}, readOnly = true,
                 placeholder = { Text("mm/dd/yyyy", color = Color.LightGray) },
                 trailingIcon = {
                     IconButton(onClick = { showDatePicker = true }) {
-                        Icon(imageVector = Icons.Outlined.CalendarMonth, contentDescription = null, tint = grayText)
+                        Icon(Icons.Outlined.CalendarMonth, null, tint = grayText)
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showDatePicker = true },
+                modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color(0xFFEEEEEE),
-                    focusedBorderColor = pinkButton,
-                    unfocusedContainerColor = grayField,
-                    focusedContainerColor = grayField
+                    unfocusedBorderColor = Color(0xFFEEEEEE), focusedBorderColor = pinkButton,
+                    unfocusedContainerColor = grayField, focusedContainerColor = grayField
                 )
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // No Telepon
             Text(text = "No Telepon", fontSize = 14.sp, color = grayText)
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
-                value = noTelepon,
-                onValueChange = { noTelepon = it },
+                value = noTelepon, onValueChange = { noTelepon = it },
                 placeholder = { Text("089522658965", color = Color.LightGray) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color(0xFFEEEEEE),
-                    focusedBorderColor = pinkButton,
-                    unfocusedContainerColor = grayField,
-                    focusedContainerColor = grayField
+                    unfocusedBorderColor = Color(0xFFEEEEEE), focusedBorderColor = pinkButton,
+                    unfocusedContainerColor = grayField, focusedContainerColor = grayField
                 )
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Kategori
             Text(text = "Kategori", fontSize = 14.sp, color = grayText)
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
-                value = kategori,
-                onValueChange = { kategori = it },
+                value = kategori, onValueChange = { kategori = it },
                 placeholder = { Text("Aksesoris", color = Color.LightGray) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color(0xFFEEEEEE),
-                    focusedBorderColor = pinkButton,
-                    unfocusedContainerColor = grayField,
-                    focusedContainerColor = grayField
+                    unfocusedBorderColor = Color(0xFFEEEEEE), focusedBorderColor = pinkButton,
+                    unfocusedContainerColor = grayField, focusedContainerColor = grayField
                 )
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Deskripsi Detail
             Text(text = "Deskripsi Detail", fontSize = 14.sp, color = grayText)
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
-                value = deskripsi,
-                onValueChange = { deskripsi = it },
-                placeholder = { Text("Sebutkan ciri-ciri khusus, isi barang, atau merk...", color = Color.LightGray) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-                shape = RoundedCornerShape(12.dp),
-                maxLines = 5,
+                value = deskripsi, onValueChange = { deskripsi = it },
+                placeholder = { Text("Sebutkan ciri-ciri khusus...", color = Color.LightGray) },
+                modifier = Modifier.fillMaxWidth().height(120.dp),
+                shape = RoundedCornerShape(12.dp), maxLines = 5,
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color(0xFFEEEEEE),
-                    focusedBorderColor = pinkButton,
-                    unfocusedContainerColor = grayField,
-                    focusedContainerColor = grayField
+                    unfocusedBorderColor = Color(0xFFEEEEEE), focusedBorderColor = pinkButton,
+                    unfocusedContainerColor = grayField, focusedContainerColor = grayField
                 )
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Lokasi Terakhir
             Text(text = "Lokasi Terakhir", fontSize = 14.sp, color = grayText)
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
-                value = lokasi,
-                onValueChange = { lokasi = it },
-                placeholder = { Text("Contoh: Stasiun Gambir atau Cafe ABC", color = Color.LightGray) },
-                trailingIcon = {
-                    Icon(imageVector = Icons.Outlined.LocationOn, contentDescription = null, tint = grayText)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                value = lokasi, onValueChange = { lokasi = it },
+                placeholder = { Text("Contoh: Stasiun Gambir", color = Color.LightGray) },
+                trailingIcon = { Icon(Icons.Outlined.LocationOn, null, tint = grayText) },
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color(0xFFEEEEEE),
-                    focusedBorderColor = pinkButton,
-                    unfocusedContainerColor = grayField,
-                    focusedContainerColor = grayField
+                    unfocusedBorderColor = Color(0xFFEEEEEE), focusedBorderColor = pinkButton,
+                    unfocusedContainerColor = grayField, focusedContainerColor = grayField
                 )
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Info box
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFFFF3F3))
-                    .padding(12.dp)
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFFFF3F3)).padding(12.dp)
             ) {
                 Row(verticalAlignment = Alignment.Top) {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = null,
-                        tint = pinkButton,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    Icon(Icons.Outlined.Info, null, tint = pinkButton, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Laporan Anda akan dipublikasikan ke komunitas TemuBarang agar orang lain dapat membantu mencarinya. Pastikan informasi sudah benar.",
-                        color = grayText,
-                        fontSize = 12.sp,
-                        lineHeight = 18.sp
+                        "Pastikan informasi yang kamu ubah sudah benar sebelum disimpan.",
+                        color = grayText, fontSize = 12.sp, lineHeight = 18.sp
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Tombol Ubah
             Button(
-                onClick = { },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(55.dp),
+                onClick = {
+                    isUploading = true
+                    if (fotoUri != null) {
+                        viewModel.uploadFoto(
+                            uri = fotoUri!!,
+                            onSuccess = { url ->
+                                viewModel.updateLaporan(
+                                    id = laporanId,
+                                    namaBarang = namaBarang,
+                                    tanggal = tanggal,
+                                    noTelepon = noTelepon,
+                                    kategori = kategori,
+                                    deskripsi = deskripsi,
+                                    lokasi = lokasi,
+                                    fotoUrl = url
+                                )
+                                isUploading = false
+                                onBackClick()
+                            },
+                            onFailure = {
+                                // Gagal upload, pakai foto lama
+                                viewModel.updateLaporan(
+                                    id = laporanId,
+                                    namaBarang = namaBarang,
+                                    tanggal = tanggal,
+                                    noTelepon = noTelepon,
+                                    kategori = kategori,
+                                    deskripsi = deskripsi,
+                                    lokasi = lokasi,
+                                    fotoUrl = existingFotoUrl
+                                )
+                                isUploading = false
+                                onBackClick()
+                            }
+                        )
+                    } else {
+                        viewModel.updateLaporan(
+                            id = laporanId,
+                            namaBarang = namaBarang,
+                            tanggal = tanggal,
+                            noTelepon = noTelepon,
+                            kategori = kategori,
+                            deskripsi = deskripsi,
+                            lokasi = lokasi,
+                            fotoUrl = existingFotoUrl
+                        )
+                        isUploading = false
+                        onBackClick()
+                    }
+                },
+                enabled = !isUploading,
+                modifier = Modifier.fillMaxWidth().height(55.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = pinkButton)
             ) {
-                Text(
-                    text = "Ubah Laporan",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp
-                )
+                if (isUploading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Mengunggah foto...", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                } else {
+                    Text("Ubah Laporan", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

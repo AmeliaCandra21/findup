@@ -8,6 +8,7 @@ data class Laporan(
     @PrimaryKey
     val id: String = "",
     val userId: String = "",
+    val username: String = "",
     val namaBarang: String = "",
     val tanggal: String = "",
     val noTelepon: String = "",

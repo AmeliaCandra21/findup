@@ -20,452 +20,211 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.findup.data.Laporan
 import com.example.findup.ui.theme.*
+import com.example.findup.viewmodel.LaporanViewModel
 
-// ─── Model ────────────────────────────────────────────────────────────────────
-enum class StatusLaporan { AKTIF, SELESAI }
-
-data class LaporanItem(
-    val id       : String,
-    val nama     : String,
-    val lokasi   : String,
-    val waktu    : String,
-    val status   : StatusLaporan,
-    val imageUrl : String? = null
-)
-
-// ─── Halaman Laporanku ────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LaporanScreen(
-    onTambah    : () -> Unit = {},
-    onEdit      : (LaporanItem) -> Unit = {},
-    onHapus     : (LaporanItem) -> Unit = {},
-    onProfile   : () -> Unit = {},
-    onBeranda   : () -> Unit = {}
+    navController: NavController,
+    viewModel: LaporanViewModel = viewModel()
 ) {
-    val laporanList = remember {
-        mutableStateListOf(
-            LaporanItem(
-                id       = "1",
-                nama     = "MacBook Air M1 Silver",
-                lokasi   = "Perpustakaan Pusat, Lt. 2",
-                waktu    = "2 Jam lalu",
-                status   = StatusLaporan.AKTIF,
-                imageUrl = "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=600"
-            ),
-            LaporanItem(
-                id       = "2",
-                nama     = "Jam Tangan Fossil",
-                lokasi   = "Kantin Teknik",
-                waktu    = "3 Hari lalu",
-                status   = StatusLaporan.SELESAI,
-                imageUrl = "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=600"
-            ),
-            LaporanItem(
-                id       = "3",
-                nama     = "Kunci Rumah & Gantungan",
-                lokasi   = "Masjid Al-Ikhlas",
-                waktu    = "5 Jam lalu",
-                status   = StatusLaporan.AKTIF,
-                imageUrl = "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600"
-            )
-        )
-    }
+    val laporanList by viewModel.getLaporanByUser()
+        .collectAsStateWithLifecycle(initialValue = emptyList())
 
-    val jumlahAktif   = laporanList.count { it.status == StatusLaporan.AKTIF }
-    val jumlahSelesai = laporanList.count { it.status == StatusLaporan.SELESAI }
+    var itemToDelete by remember { mutableStateOf<Laporan?>(null) }
 
-    // Dialog konfirmasi hapus
-    var itemToDelete by remember { mutableStateOf<LaporanItem?>(null) }
     if (itemToDelete != null) {
         AlertDialog(
             onDismissRequest = { itemToDelete = null },
-            title   = { Text("Hapus Laporan") },
-            text    = { Text("Yakin ingin menghapus laporan \"${itemToDelete!!.nama}\"?") },
+            title = { Text("Hapus Laporan") },
+            text = { Text("Yakin ingin menghapus laporan \"${itemToDelete!!.namaBarang}\"?") },
             confirmButton = {
                 TextButton(onClick = {
-                    laporanList.remove(itemToDelete)
-                    onHapus(itemToDelete!!)
+                    viewModel.hapusLaporan(itemToDelete!!)
                     itemToDelete = null
-                }) {
-                    Text("Hapus", color = RedDelete)
-                }
+                }) { Text("Hapus", color = RedDelete) }
             },
             dismissButton = {
-                TextButton(onClick = { itemToDelete = null }) {
-                    Text("Batal")
-                }
+                TextButton(onClick = { itemToDelete = null }) { Text("Batal") }
             }
         )
     }
 
     Scaffold(
         containerColor = BackgroundColor,
-        topBar = { LaporanTopBar(onProfile = onProfile) },
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier.size(32.dp).clip(CircleShape).background(PinkLight),
+                            contentAlignment = Alignment.Center
+                        ) { Text("📍", fontSize = 16.sp) }
+                        Spacer(Modifier.width(8.dp))
+                        Text("FindUp", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = PinkPrimary)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = White)
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(
-                onClick        = onTambah,
-                shape          = CircleShape,
+                onClick = { navController.navigate("TambahLaporan") },
+                shape = CircleShape,
                 containerColor = PinkPrimary,
-                contentColor   = White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Tambah Laporan")
-            }
+                contentColor = White
+            ) { Icon(Icons.Default.Add, contentDescription = "Tambah") }
         }
     ) { innerPadding ->
-        LazyColumn(
-            modifier       = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            // Header judul
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text       = "Laporanku",
-                    fontSize   = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = TextPrimary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text     = "Kelola daftar barang yang telah Anda laporkan di platform.",
-                    fontSize = 13.sp,
-                    color    = TextSecondary,
-                    lineHeight = 18.sp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
 
-            // Kartu ringkasan statistik
-            item {
-                StatistikRow(jumlahAktif = jumlahAktif, jumlahSelesai = jumlahSelesai)
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-
-            // Daftar laporan
-            items(laporanList, key = { it.id }) { item ->
-                LaporanCard(
-                    item    = item,
-                    onEdit  = { onEdit(item) },
-                    onHapus = { itemToDelete = item }
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            item { Spacer(modifier = Modifier.height(72.dp)) }
-        }
-    }
-}
-
-// ─── Top Bar ──────────────────────────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LaporanTopBar(onProfile: () -> Unit) {
-    TopAppBar(
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Logo FindUp
-                Box(
-                    modifier         = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(PinkLight),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("📍", fontSize = 16.sp)
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text       = "TemuBarang",
-                    fontSize   = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = PinkPrimary
-                )
-            }
-        },
-        actions = {
+        if (laporanList.isEmpty()) {
+            // Empty state
             Box(
-                modifier         = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFD7C4B0)),
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("👤", fontSize = 18.sp)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("📋", fontSize = 64.sp)
+                    Spacer(Modifier.height(16.dp))
+                    Text("Belum ada laporan", fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp, color = TextPrimary)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Laporan yang kamu buat\nakan muncul di sini",
+                        fontSize = 14.sp, color = TextSecondary, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(24.dp))
+                    Button(
+                        onClick = { navController.navigate("TambahLaporan") },
+                        colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
+                        shape = RoundedCornerShape(50)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Buat Laporan Pertama", color = White)
+                    }
+                }
             }
-            Spacer(modifier = Modifier.width(12.dp))
-        },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = White)
-    )
-    HorizontalDivider(color = Color(0xFFF0F0F0))
-}
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Laporanku", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Kelola laporan barang yang telah kamu buat",
+                        fontSize = 13.sp, color = TextSecondary)
+                    Spacer(Modifier.height(8.dp))
+                }
 
-// ─── Statistik ─────────────────────────────────────────────────────────────────
-@Composable
-private fun StatistikRow(jumlahAktif: Int, jumlahSelesai: Int) {
-    Row(
-        modifier              = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        StatCard(
-            modifier = Modifier.weight(1f),
-            label    = "Aktif",
-            value    = jumlahAktif.toString().padStart(2, '0'),
-            valueColor = PinkPrimary,
-            icon     = "📋"
-        )
-        StatCard(
-            modifier = Modifier.weight(1f),
-            label    = "Selesai",
-            value    = jumlahSelesai.toString().padStart(2, '0'),
-            valueColor = GreenActive,
-            icon     = "✅"
-        )
-    }
-}
+                items(laporanList, key = { it.id }) { laporan ->
+                    LaporanCardItem(
+                        laporan = laporan,
+                        onEdit = { navController.navigate("EditLaporan/${laporan.id}") },
+                        onHapus = { itemToDelete = laporan }
+                    )
+                }
 
-@Composable
-private fun StatCard(
-    modifier   : Modifier,
-    label      : String,
-    value      : String,
-    valueColor : Color,
-    icon       : String
-) {
-    Card(
-        modifier  = modifier,
-        shape     = RoundedCornerShape(14.dp),
-        colors    = CardDefaults.cardColors(containerColor = White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(icon, fontSize = 16.sp)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = label, fontSize = 13.sp, color = TextSecondary)
+                item { Spacer(Modifier.height(72.dp)) }
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text       = value,
-                fontSize   = 30.sp,
-                fontWeight = FontWeight.Bold,
-                color      = valueColor
-            )
         }
     }
 }
 
-// ─── Kartu Laporan ────────────────────────────────────────────────────────────
 @Composable
-private fun LaporanCard(
-    item    : LaporanItem,
-    onEdit  : () -> Unit,
-    onHapus : () -> Unit
-) {
+fun LaporanCardItem(laporan: Laporan, onEdit: () -> Unit, onHapus: () -> Unit) {
     Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(containerColor = White),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column {
-            // Gambar + badge status
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-            ) {
-                // Gambar barang
-                if (!item.imageUrl.isNullOrBlank()) {
+            Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
+                if (laporan.fotoUrl.isNotEmpty()) {
                     AsyncImage(
-                        model              = item.imageUrl,
-                        contentDescription = item.nama,
-                        contentScale       = ContentScale.Crop,
-                        modifier           = Modifier.fillMaxSize()
+                        model = laporan.fotoUrl,
+                        contentDescription = laporan.namaBarang,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
                     )
                 } else {
                     Box(
-                        modifier         = Modifier
-                            .fillMaxSize()
-                            .background(Color(0xFFEEEEEE)),
+                        modifier = Modifier.fillMaxSize().background(Color(0xFFEEEEEE)),
                         contentAlignment = Alignment.Center
-                    ) {
-                        Text("📦", fontSize = 48.sp)
-                    }
+                    ) { Text("📦", fontSize = 48.sp) }
                 }
 
-                // Badge status di kiri atas
+                val badgeColor = if (laporan.status == "HILANG") Color(0xFFE53935) else Color(0xFF4CAF50)
+                val badgeBg = if (laporan.status == "HILANG") Color(0xFFFFEBEE) else Color(0xFFE8F5E9)
+                val badgeText = if (laporan.status == "HILANG") Color(0xFFE53935) else Color(0xFF4CAF50)
                 Box(
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .align(Alignment.TopStart)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            if (item.status == StatusLaporan.AKTIF) BadgeAktif
-                            else BadgeSelesai
-                        )
+                    modifier = Modifier.padding(10.dp).align(Alignment.TopStart)
+                        .clip(RoundedCornerShape(20.dp)).background(badgeBg)
                         .padding(horizontal = 12.dp, vertical = 5.dp)
                 ) {
-                    Text(
-                        text       = if (item.status == StatusLaporan.AKTIF) "Aktif" else "Selesai",
-                        fontSize   = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color      = if (item.status == StatusLaporan.AKTIF) GreenActive else TextSecondary
-                    )
+                    Text(laporan.status, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = badgeText)
                 }
             }
 
-            // Info barang
             Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-                // Nama + waktu
                 Row(
-                    modifier              = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text       = item.nama,
-                        fontSize   = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color      = TextPrimary,
-                        modifier   = Modifier.weight(1f)
-                    )
+                    Text(laporan.namaBarang, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                        color = TextPrimary, modifier = Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector        = Icons.Default.DateRange,
-                            contentDescription = null,
-                            tint               = TextSecondary,
-                            modifier           = Modifier.size(13.dp)
-                        )
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text     = item.waktu,
-                            fontSize = 12.sp,
-                            color    = TextSecondary
-                        )
+                        Icon(Icons.Default.DateRange, contentDescription = null,
+                            tint = TextSecondary, modifier = Modifier.size(13.dp))
+                        Spacer(Modifier.width(3.dp))
+                        Text(laporan.tanggal, fontSize = 12.sp, color = TextSecondary)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(5.dp))
+                Spacer(Modifier.height(5.dp))
 
-                // Lokasi
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector        = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint               = TextSecondary,
-                        modifier           = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(3.dp))
-                    Text(
-                        text     = item.lokasi,
-                        fontSize = 13.sp,
-                        color    = TextSecondary
-                    )
+                    Icon(Icons.Default.LocationOn, contentDescription = null,
+                        tint = TextSecondary, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(3.dp))
+                    Text(laporan.lokasi, fontSize = 13.sp, color = TextSecondary)
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(Modifier.height(10.dp))
                 HorizontalDivider(color = Color(0xFFF5F5F5))
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
 
-                // Tombol aksi
                 Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment     = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    // Edit
-                    TextButton(
-                        onClick = onEdit,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector        = Icons.Default.Edit,
-                            contentDescription = "Edit",
-                            tint               = TextSecondary,
-                            modifier           = Modifier.size(15.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Edit", fontSize = 13.sp, color = TextSecondary)
+                    TextButton(onClick = onEdit, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit",
+                            tint = TextSecondary, modifier = Modifier.size(15.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Edit", fontSize = 13.sp, color = TextSecondary)
                     }
-
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    // Hapus
-                    TextButton(
-                        onClick = onHapus,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector        = Icons.Default.Delete,
-                            contentDescription = "Hapus",
-                            tint               = RedDelete,
-                            modifier           = Modifier.size(15.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Hapus", fontSize = 13.sp, color = RedDelete)
+                    Spacer(Modifier.width(4.dp))
+                    TextButton(onClick = onHapus, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Hapus",
+                            tint = RedDelete, modifier = Modifier.size(15.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Hapus", fontSize = 13.sp, color = RedDelete)
                     }
                 }
             }
         }
-    }
-}
-
-// ─── Bottom Navigation ─────────────────────────────────────────────────────────
-@Composable
-private fun LaporanBottomNav(
-    onBeranda : () -> Unit,
-    onProfile : () -> Unit
-) {
-    NavigationBar(
-        containerColor = White,
-        tonalElevation = 4.dp
-    ) {
-        val navColors = NavigationBarItemDefaults.colors(
-            selectedIconColor   = PinkPrimary,
-            selectedTextColor   = PinkPrimary,
-            unselectedIconColor = TextSecondary,
-            unselectedTextColor = TextSecondary,
-            indicatorColor      = PinkLight
-        )
-
-        NavigationBarItem(
-            selected = false,
-            onClick  = onBeranda,
-            icon     = { Text("🏠", fontSize = 20.sp) },
-            label    = { Text("Beranda", fontSize = 11.sp) },
-            colors   = navColors
-        )
-        NavigationBarItem(
-            selected = true,
-            onClick  = {},
-            icon     = { Text("📋", fontSize = 20.sp) },
-            label    = { Text("Laporanku", fontSize = 11.sp) },
-            colors   = navColors
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick  = onProfile,
-            icon     = { Text("👤", fontSize = 20.sp) },
-            label    = { Text("Profil", fontSize = 11.sp) },
-            colors   = navColors
-        )
-    }
-}
-
-// ─── Preview ──────────────────────────────────────────────────────────────────
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun LaporanScreenPreview() {
-    MaterialTheme {
-        LaporanScreen()
     }
 }

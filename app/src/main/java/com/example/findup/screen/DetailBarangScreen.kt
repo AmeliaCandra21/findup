@@ -1,18 +1,18 @@
 package com.example.findup.screen
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Category
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,266 +21,227 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.findup.R
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.example.findup.data.Laporan
+import com.example.findup.viewmodel.LaporanViewModel
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun DetailBarangScreen(
-    onBackClick: () -> Unit = {}
+    laporanId: String,
+    onBackClick: () -> Unit = {},
+    onChatClick: (userId: String, username: String, namaBarang: String, fotoUrl: String) -> Unit = { _, _, _, _ -> },
+    viewModel: LaporanViewModel = viewModel()
 ) {
-    val pinkButton = Color(0xFFEFA7A9)
-    val greenStatus = Color(0xFF4CAF50)
-    val grayText = Color(0xFF888888)
-    val grayField = Color(0xFFF2F2F2)
+    val pinkButton    = Color(0xFFEFA7A9)
+    val grayText      = Color(0xFF888888)
+    val grayField     = Color(0xFFF2F2F2)
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            // Gambar barang
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(280.dp),
-                contentAlignment = Alignment.TopStart
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.foto_dompet),
-                    contentDescription = "Foto Barang",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+    var laporan by remember { mutableStateOf<Laporan?>(null) }
+
+    LaunchedEffect(laporanId) {
+        viewModel.getLaporanById(laporanId) { laporan = it }
+    }
+
+    if (laporan == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = pinkButton)
+        }
+        return
+    }
+
+    val data = laporan!!
+    val isOwner = data.userId == currentUserId
+    val statusColor = if (data.status == "HILANG") Color(0xFFE53935) else Color(0xFF4CAF50)
+    val statusBg    = if (data.status == "HILANG") Color(0xFFFFEBEE) else Color(0xFFE8F5E9)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+
+            // Foto barang
+            Box(modifier = Modifier.fillMaxWidth().height(280.dp)) {
+                if (data.fotoUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = data.fotoUrl,
+                        contentDescription = data.namaBarang,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(Color(0xFFEEEEEE)),
+                        contentAlignment = Alignment.Center
+                    ) { Text("📦", fontSize = 64.sp) }
+                }
 
                 // Tombol back
                 Box(
-                    modifier = Modifier
-                        .statusBarsPadding()
-                        .padding(16.dp)
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
+                    modifier = Modifier.statusBarsPadding().padding(16.dp)
+                        .size(36.dp).clip(CircleShape).background(Color.White)
                         .clickable { onBackClick() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "Kembali",
-                        tint = Color.Black,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Kembali",
+                        tint = Color.Black, modifier = Modifier.size(20.dp))
                 }
             }
 
             // Konten bawah
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = (-24).dp)
+                modifier = Modifier.fillMaxWidth().offset(y = (-24).dp)
                     .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                     .background(Color.White)
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp)
-                ) {
-                    // Status + ID
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                Column(modifier = Modifier.padding(24.dp)) {
+
+                    // Badge status
+                    Box(
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                            .background(statusBg)
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFFE8F5E9))
-                                .padding(horizontal = 12.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = "AKTIF",
-                                color = greenStatus,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Text(data.status, color = statusColor,
+                            fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                    // Judul barang
-                    Text(
-                        text = "Dompet Kulit & Earbuds Hitam",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
+                    Text(data.namaBarang, fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold, color = Color.Black)
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
 
                     // Tanggal & Kategori
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Tanggal
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFFEEF0FB))
-                                .padding(12.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(Color.White),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.CalendarMonth,
-                                        contentDescription = null,
-                                        tint = pinkButton,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(text = "TANGGAL", fontSize = 10.sp, color = grayText, fontWeight = FontWeight.Medium)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(text = "12 Sep 2023", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
-                                }
-                            }
-                        }
-
-                        // Kategori
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFFEEF0FB))
-                                .padding(12.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(Color.White),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Category,
-                                        contentDescription = null,
-                                        tint = pinkButton,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(text = "KATEGORI", fontSize = 10.sp, color = grayText, fontWeight = FontWeight.Medium)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(text = "Aksesoris", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
-                                }
-                            }
-                        }
+                    Row(modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        InfoBox(modifier = Modifier.weight(1f),
+                            icon = { Icon(Icons.Outlined.CalendarMonth, null, tint = pinkButton, modifier = Modifier.size(22.dp)) },
+                            label = "TANGGAL", value = data.tanggal)
+                        InfoBox(modifier = Modifier.weight(1f),
+                            icon = { Icon(Icons.Outlined.Category, null, tint = pinkButton, modifier = Modifier.size(22.dp)) },
+                            label = "KATEGORI", value = data.kategori)
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                    // Deskripsi
-                    Text(text = "Deskripsi Lengkap", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Ditemukan dompet lipat kulit berwarna hitam merk 'B' bersama dengan casing earbuds wireless di area parkir basement Mall Senayan City. Di dalam dompet terdapat beberapa kartu identitas namun tidak ada uang tunai. Kondisi barang masih sangat baik dan berfungsi normal.",
-                        color = grayText,
-                        fontSize = 14.sp,
-                        lineHeight = 22.sp
-                    )
+                    Text("Deskripsi Lengkap", fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold, color = Color.Black)
+                    Spacer(Modifier.height(8.dp))
+                    Text(data.deskripsi, color = grayText, fontSize = 14.sp, lineHeight = 22.sp)
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                    // Lokasi
-                    Text(text = "Lokasi Penemuan", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                    Spacer(modifier = Modifier.height(8.dp))
-
+                    Text("Lokasi", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    Spacer(Modifier.height(8.dp))
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(grayField)
-                            .padding(16.dp)
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                            .background(grayField).padding(16.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Outlined.LocationOn, contentDescription = null, tint = pinkButton, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text(text = "LOKASI SPESIFIK", fontSize = 10.sp, color = grayText, fontWeight = FontWeight.Medium)
-                                Text(text = "Senayan City, Jakarta Pusat", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
-                            }
+                            Icon(Icons.Outlined.LocationOn, null, tint = pinkButton, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(data.lokasi, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(Modifier.height(12.dp))
 
                     // Dilaporkan oleh
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(grayField)
-                            .padding(16.dp)
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                            .background(grayField).padding(16.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()) {
                             Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFBBBBBB)),
+                                modifier = Modifier.size(48.dp).clip(CircleShape)
+                                    .background(Color(0xFFFFCDD2)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = "A", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                Text(data.username.firstOrNull()?.toString() ?: "?",
+                                    color = Color(0xFFE8737A), fontWeight = FontWeight.Bold, fontSize = 20.sp)
                             }
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(text = "Dilaporkan oleh", fontSize = 10.sp, color = grayText)
-                                Text(text = "Andra Ramadhan", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
-                                Text(text = "No Telp", fontSize = 10.sp, color = grayText)
-                                Text(text = "08123456789", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+                                Text("Dilaporkan oleh", fontSize = 10.sp, color = grayText)
+                                Text(data.username, fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold, color = Color.Black)
+                                Spacer(Modifier.height(4.dp))
+                                Text("No Telepon", fontSize = 10.sp, color = grayText)
+                                Text(data.noTelepon, fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold, color = Color.Black)
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(100.dp))
+                    Spacer(Modifier.height(100.dp))
                 }
             }
         }
 
-        // Tombol Kirim Pesan
+        // Tombol bawah — berbeda tergantung pemilik
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .background(Color.White)
-                .padding(16.dp)
+            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)
+                .background(Color.White).padding(16.dp)
         ) {
-            Button(
-                onClick = { },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(55.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = pinkButton)
-            ) {
-                Icon(imageVector = Icons.Outlined.ChatBubbleOutline, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Kirim Pesan", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            if (isOwner) {
+                // Postingan sendiri → Edit
+                Button(
+                    onClick = { /* navigasi ke edit sudah dari HomeScreen */ },
+                    modifier = Modifier.fillMaxWidth().height(55.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = pinkButton)
+                ) {
+                    Icon(Icons.Outlined.Edit, null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Edit Laporan", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                }
+            } else {
+                // Postingan orang lain → DM
+                Button(
+                    onClick = {
+                        onChatClick(data.userId, data.username, data.namaBarang, data.fotoUrl)
+                    },
+                    modifier = Modifier.fillMaxWidth().height(55.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = pinkButton)
+                ) {
+                    Icon(Icons.Outlined.ChatBubbleOutline, null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Kirim Pesan", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoBox(
+    modifier: Modifier,
+    icon: @Composable () -> Unit,
+    label: String,
+    value: String
+) {
+    Box(
+        modifier = modifier.clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFEEF0FB)).padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp))
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) { icon() }
+            Spacer(Modifier.width(8.dp))
+            Column {
+                Text(label, fontSize = 10.sp, color = Color(0xFF888888), fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(4.dp))
+                Text(value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
             }
         }
     }

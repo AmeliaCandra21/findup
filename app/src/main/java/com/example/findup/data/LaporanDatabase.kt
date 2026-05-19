@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Laporan::class], version = 1, exportSchema = false)
+@Database(entities = [Laporan::class], version = 2, exportSchema = false)
 abstract class LaporanDatabase : RoomDatabase() {
 
     abstract fun laporanDao(): LaporanDao
@@ -20,7 +20,9 @@ abstract class LaporanDatabase : RoomDatabase() {
                     context.applicationContext,
                     LaporanDatabase::class.java,
                     "laporan_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration() // ← ini yang penting
+                    .build()
                 INSTANCE = instance
                 instance
             }
