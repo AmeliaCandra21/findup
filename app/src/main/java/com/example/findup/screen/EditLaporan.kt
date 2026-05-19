@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditLaporanScreen(
     onBackClick: () -> Unit = {}
@@ -30,7 +31,6 @@ fun EditLaporanScreen(
     val pinkButton = Color(0xFFEFA7A9)
     val grayText = Color(0xFF888888)
     val grayField = Color(0xFFF5F5F5)
-    val pinkLight = Color(0xFFFDE8E8)
 
     var namaBarang by remember { mutableStateOf("") }
     var tanggal by remember { mutableStateOf("") }
@@ -38,85 +38,58 @@ fun EditLaporanScreen(
     var kategori by remember { mutableStateOf("") }
     var deskripsi by remember { mutableStateOf("") }
     var lokasi by remember { mutableStateOf("") }
-    var selectedKategori by remember { mutableStateOf("Hilang") }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .verticalScroll(rememberScrollState())
-    ) {
-        // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val sdf = java.text.SimpleDateFormat("MM/dd/yyyy", java.util.Locale.getDefault())
+                        tanggal = sdf.format(java.util.Date(millis))
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Batal") }
+            }
         ) {
-            Icon(
-                imageVector = Icons.Filled.ArrowBack,
-                contentDescription = "Kembali",
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable { onBackClick() }
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Tambah Laporan",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Edit Laporan",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { onBackClick() }) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = "Kembali"
+                        )
+                    }
+                }
             )
         }
-
-        HorizontalDivider(color = Color(0xFFEEEEEE))
+    ) { paddingValues ->
 
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
-
-            // Kategori Laporan
-            Text(text = "Kategori Laporan", fontSize = 14.sp, color = grayText)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, Color(0xFFEEEEEE), RoundedCornerShape(12.dp))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (selectedKategori == "Hilang") pinkLight else Color.White)
-                        .clickable { selectedKategori = "Hilang" }
-                        .padding(12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Hilang",
-                        color = if (selectedKategori == "Hilang") pinkButton else grayText,
-                        fontWeight = if (selectedKategori == "Hilang") FontWeight.SemiBold else FontWeight.Normal
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (selectedKategori == "Ditemukan") pinkLight else Color.White)
-                        .clickable { selectedKategori = "Ditemukan" }
-                        .padding(12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Ditemukan",
-                        color = if (selectedKategori == "Ditemukan") pinkButton else grayText,
-                        fontWeight = if (selectedKategori == "Ditemukan") FontWeight.SemiBold else FontWeight.Normal
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
 
             // Foto Barang
             Text(text = "Foto Barang", fontSize = 14.sp, color = grayText)
@@ -169,12 +142,17 @@ fun EditLaporanScreen(
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = tanggal,
-                onValueChange = { tanggal = it },
+                onValueChange = {},
+                readOnly = true,
                 placeholder = { Text("mm/dd/yyyy", color = Color.LightGray) },
                 trailingIcon = {
-                    Icon(imageVector = Icons.Outlined.CalendarMonth, contentDescription = null, tint = grayText)
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(imageVector = Icons.Outlined.CalendarMonth, contentDescription = null, tint = grayText)
+                    }
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDatePicker = true },
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = Color(0xFFEEEEEE),
@@ -295,7 +273,7 @@ fun EditLaporanScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Tombol Simpan
+            // Tombol Ubah
             Button(
                 onClick = { },
                 modifier = Modifier
@@ -305,7 +283,7 @@ fun EditLaporanScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = pinkButton)
             ) {
                 Text(
-                    text = "Simpan Laporan",
+                    text = "Ubah Laporan",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp
                 )

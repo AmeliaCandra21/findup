@@ -27,17 +27,41 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun TambahLaporanScreen() {
 
-    var kategori by remember { mutableStateOf("Hilang") }
-
     var namaBarang by remember { mutableStateOf("") }
     var tanggal by remember { mutableStateOf("") }
     var noTelepon by remember { mutableStateOf("") }
     var kategoriBarang by remember { mutableStateOf("") }
     var deskripsi by remember { mutableStateOf("") }
     var lokasi by remember { mutableStateOf("") }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
 
     val pink = Color(0xFFF5A5A5)
     val softPink = Color(0xFFFFF1F1)
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val sdf = java.text.SimpleDateFormat("MM/dd/yyyy", java.util.Locale.getDefault())
+                        tanggal = sdf.format(java.util.Date(millis))
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Batal")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -67,61 +91,6 @@ fun TambahLaporanScreen() {
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-
-            Text(
-                text = "Kategori Laporan",
-                fontSize = 12.sp,
-                color = Color.Gray
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFF3F4F6))
-                    .padding(4.dp)
-            ) {
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(
-                            if (kategori == "Hilang") softPink
-                            else Color.Transparent
-                        )
-                        .clickable { kategori = "Hilang" }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Hilang",
-                        color = if (kategori == "Hilang") pink else Color.Gray
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(
-                            if (kategori == "Ditemukan") softPink
-                            else Color.Transparent
-                        )
-                        .clickable { kategori = "Ditemukan" }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Ditemukan",
-                        color = if (kategori == "Ditemukan") pink else Color.Gray
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
 
             Text(
                 text = "Foto Barang",
@@ -173,18 +142,37 @@ fun TambahLaporanScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            CustomTextField(
-                label = "Tanggal Kejadian",
+            Text(
+                text = "Tanggal Kejadian",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
                 value = tanggal,
-                onValueChange = { tanggal = it },
-                placeholder = "mm/dd/yyyy",
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDatePicker = true },
+                placeholder = { Text("mm/dd/yyyy") },
                 trailingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = null,
-                        tint = Color.Gray
-                    )
-                }
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = null,
+                            tint = Color.Gray
+                        )
+                    }
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFFF5A5A5),
+                    unfocusedBorderColor = Color(0xFFE5E7EB)
+                ),
+                singleLine = true
             )
 
             Spacer(modifier = Modifier.height(16.dp))
