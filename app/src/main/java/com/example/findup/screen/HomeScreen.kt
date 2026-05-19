@@ -25,76 +25,69 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.example.findup.data.Laporan
+import com.example.findup.viewmodel.LaporanViewModel
+import com.google.firebase.auth.FirebaseAuth
 
-// ── Warna tema FindUp ────────────────────────────────────────────────
-val FindUpPink   = Color(0xFFE8737A)
-val PinkLight    = Color(0xFFFDE8E9)
-val PinkBorder   = Color(0xFFF4BBBE)
-val TextPrimary  = Color(0xFF1A1A2E)
-val TextSecondary= Color(0xFF888888)
-val BgCard       = Color(0xFFFFFFFF)
-val BgScreen     = Color(0xFFF7F7F7)
-val GreenFound   = Color(0xFF4CAF50)
-val RedLost      = Color(0xFFE53935)
+val FindUpPink    = Color(0xFFE8737A)
+val PinkLight     = Color(0xFFFDE8E9)
+val PinkBorder    = Color(0xFFF4BBBE)
+val TextPrimary   = Color(0xFF1A1A2E)
+val TextSecondary = Color(0xFF888888)
+val BgCard        = Color(0xFFFFFFFF)
+val BgScreen      = Color(0xFFF7F7F7)
+val GreenFound    = Color(0xFF4CAF50)
+val RedLost       = Color(0xFFE53935)
 
-// ── Model Data ───────────────────────────────────────────────────────
-enum class PostStatus { HILANG, DITEMUKAN }
-
-data class Post(
-    val id: Int,
-    val title: String,
-    val location: String,
-    val status: PostStatus,
-    val imageUrl: String? = null
-)
-
-// ── Sample data ──────────────────────────────────────────────────────
-val samplePosts = listOf(
-    Post(1, "iPhone 13 Pro Max", "Bandung",          PostStatus.HILANG,
-        "https://images.unsplash.com/photo-1632661674596-df8be070a5c5?w=400"),
-    Post(2, "Kunci Honda",       "Area Parkir Mall", PostStatus.DITEMUKAN,
-        "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400"),
-    Post(3, "Dompet Kulit",      "Stasiun Sudirman", PostStatus.HILANG,
-        "https://images.unsplash.com/photo-1627123424574-724758594e93?w=400"),
-    Post(4, "Kacamata Hitam",    "Lobi Kantor",      PostStatus.DITEMUKAN,
-        null)
-)
-
-// ────────────────────────────────────────────────────────────────────
-// MAIN SCREEN
-// ────────────────────────────────────────────────────────────────────
 @Composable
 fun HomeScreen(
     navController: NavController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: LaporanViewModel = viewModel()
 ) {
+    var selectedFilter by remember { mutableStateOf(0) }
+    var searchQuery by remember { mutableStateOf("") }   // ← state query search
+    val filters = listOf("Semua", "Hilang", "Ditemukan")
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-    var selectedFilter by remember { mutableStateOf(0) }  // 0=Semua 1=Hilang 2=Temu
-
-    val filters = listOf("Semua", "Hilang", "Temu")
-
-    val filteredPosts = when (selectedFilter) {
-        1 -> samplePosts.filter { it.status == PostStatus.HILANG }
-        2 -> samplePosts.filter { it.status == PostStatus.DITEMUKAN }
-        else -> samplePosts
+    var semuaLaporan by remember { mutableStateOf<List<Laporan>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        viewModel.fetchAllLaporanFromFirestore { semuaLaporan = it }
     }
+
+    // ── Filter: status + search query ────────────────────────────────
+    val filteredLaporan = semuaLaporan
+        .filter { laporan ->
+            when (selectedFilter) {
+                1 -> laporan.status == "HILANG"
+                2 -> laporan.status == "DITEMUKAN"
+                else -> true
+            }
+        }
+        .filter { laporan ->
+            if (searchQuery.isBlank()) true
+            else {
+                val q = searchQuery.trim().lowercase()
+                laporan.namaBarang.lowercase().contains(q) ||
+                        laporan.lokasi.lowercase().contains(q) ||
+                        laporan.kategori.lowercase().contains(q) ||
+                        laporan.username.lowercase().contains(q) ||
+                        laporan.deskripsi.lowercase().contains(q)
+            }
+        }
 
     Scaffold(
         containerColor = BgScreen,
-
-        // ── FAB ─────────────────────────────────────────────────────
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    navController.navigate("TambahLaporan")
-                },
+                onClick = { navController.navigate("TambahLaporan") },
                 containerColor = FindUpPink,
                 contentColor = Color.White,
                 shape = CircleShape,
@@ -102,350 +95,299 @@ fun HomeScreen(
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Tambah Laporan")
             }
-        },
-
-        // ── Bottom Navigation ────────────────────────────────────────
-
+        }
     ) { innerPadding ->
-
         Column(
             modifier = modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
         ) {
-
             Spacer(Modifier.height(16.dp))
-
-            // ── Logo / App Bar ───────────────────────────────────────
             TopAppBarSection()
-
             Spacer(Modifier.height(16.dp))
 
-            // ── Search Bar ───────────────────────────────────────────
-            SearchBar()
+            // ── Search bar sekarang terhubung ke state ────────────────
+            SearchBar(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it }
+            )
 
             Spacer(Modifier.height(16.dp))
-
-            // ── Filter Chips ─────────────────────────────────────────
             FilterRow(
                 filters = filters,
                 selectedIndex = selectedFilter,
                 onFilterSelected = { selectedFilter = it }
             )
-
             Spacer(Modifier.height(16.dp))
 
-            // ── Grid Postingan ───────────────────────────────────────
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(filteredPosts) { post ->
-                    PostCard(post = post)
+            // ── Teks hasil pencarian kalau ada query ──────────────────
+            if (searchQuery.isNotBlank()) {
+                Text(
+                    text = if (filteredLaporan.isEmpty())
+                        "Tidak ada hasil untuk \"$searchQuery\""
+                    else
+                        "${filteredLaporan.size} hasil untuk \"$searchQuery\"",
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            if (filteredLaporan.isEmpty()) {
+                if (searchQuery.isNotBlank()) {
+                    // Empty state khusus search
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("🔍", fontSize = 48.sp)
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                "Tidak ditemukan barang\ndengan kata kunci \"$searchQuery\"",
+                                fontSize = 14.sp,
+                                color = TextSecondary,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 20.sp
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            TextButton(onClick = { searchQuery = "" }) {
+                                Text("Hapus pencarian", color = FindUpPink)
+                            }
+                        }
+                    }
+                } else {
+                    EmptyFeedState(onTambahClick = { navController.navigate("TambahLaporan") })
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(filteredLaporan) { laporan ->
+                        LaporanCard(
+                            laporan = laporan,
+                            onClick = {
+                                if (laporan.userId == currentUserId) {
+                                    navController.navigate("EditLaporan/${laporan.id}")
+                                } else {
+                                    navController.navigate("DetailBarang/${laporan.id}")
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-// ────────────────────────────────────────────────────────────────────
-// TOP APP BAR
-// ────────────────────────────────────────────────────────────────────
 @Composable
-fun TopAppBarSection() {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // Logo placeholder (ganti dengan Image(painterResource...) jika ada aset)
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(PinkLight),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("F", color = FindUpPink, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        }
-
-        Spacer(Modifier.width(8.dp))
-
-        Text(
-            text = "FindUp",
-            color = FindUpPink,
-            fontWeight = FontWeight.Bold,
-            fontSize = 22.sp
-        )
-    }
-}
-
-// ────────────────────────────────────────────────────────────────────
-// SEARCH BAR
-// ────────────────────────────────────────────────────────────────────
-@Composable
-fun SearchBar() {
-    var query by remember { mutableStateOf("") }
-
-    OutlinedTextField(
-        value = query,
-        onValueChange = { query = it },
-        placeholder = {
-            Text(
-                "Cari barang hilang atau ditemukan...",
-                color = TextSecondary,
-                fontSize = 14.sp
-            )
-        },
-        leadingIcon = {
-            Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary)
-        },
-        shape = RoundedCornerShape(50),
-        singleLine = true,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor   = FindUpPink,
-            unfocusedBorderColor = Color(0xFFE0E0E0),
-            focusedContainerColor   = Color.White,
-            unfocusedContainerColor = Color.White
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp)
-    )
-}
-
-// ────────────────────────────────────────────────────────────────────
-// FILTER ROW
-// ────────────────────────────────────────────────────────────────────
-@Composable
-fun FilterRow(
-    filters: List<String>,
-    selectedIndex: Int,
-    onFilterSelected: (Int) -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        filters.forEachIndexed { index, label ->
-            val isSelected = index == selectedIndex
-
+fun EmptyFeedState(onTambahClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(if (isSelected) FindUpPink else Color.Transparent)
-                    .border(
-                        width = 1.dp,
-                        color = if (isSelected) FindUpPink else PinkBorder,
-                        shape = RoundedCornerShape(50)
-                    )
-                    .clickable { onFilterSelected(index) }
-                    .padding(horizontal = 18.dp, vertical = 8.dp)
+                modifier = Modifier.size(90.dp).clip(CircleShape).background(PinkLight),
+                contentAlignment = Alignment.Center
+            ) { Text("📦", fontSize = 36.sp) }
+            Spacer(Modifier.height(20.dp))
+            Text("Belum ada laporan", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Jadilah yang pertama melaporkan\nbarang hilang atau temuan!",
+                fontSize = 14.sp, color = TextSecondary,
+                textAlign = TextAlign.Center, lineHeight = 20.sp
+            )
+            Spacer(Modifier.height(24.dp))
+            Button(
+                onClick = onTambahClick,
+                colors = ButtonDefaults.buttonColors(containerColor = FindUpPink),
+                shape = RoundedCornerShape(50)
             ) {
-                Text(
-                    text = label,
-                    color = if (isSelected) Color.White else FindUpPink,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    fontSize = 13.sp
-                )
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Buat Laporan", color = Color.White)
             }
-
-            Spacer(Modifier.width(8.dp))
-        }
-
-        Spacer(Modifier.weight(1f))
-
-        // Filter/Sort icon
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(PinkLight)
-                .clickable { /* buka filter dialog */ }
-        ) {
-            Icon(Icons.Outlined.Tune, contentDescription = "Filter", tint = FindUpPink)
         }
     }
 }
 
-// ────────────────────────────────────────────────────────────────────
-// POST CARD
-// ────────────────────────────────────────────────────────────────────
 @Composable
-fun PostCard(post: Post) {
+fun LaporanCard(laporan: Laporan, onClick: () -> Unit = {}) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = BgCard),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }
     ) {
         Column {
-
-            // ── Gambar + Badge ───────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(130.dp)
-            ) {
-                if (post.imageUrl != null) {
+            Box(modifier = Modifier.fillMaxWidth().height(130.dp)) {
+                if (laporan.fotoUrl.isNotEmpty()) {
                     AsyncImage(
-                        model = post.imageUrl,
-                        contentDescription = post.title,
+                        model = laporan.fotoUrl,
+                        contentDescription = laporan.namaBarang,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxSize()
+                        modifier = Modifier.fillMaxSize()
                             .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                     )
                 } else {
-                    // Placeholder jika tidak ada gambar
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
+                        modifier = Modifier.fillMaxSize()
                             .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                             .background(Color(0xFFEEEEEE)),
                         contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.List,
-                            contentDescription = null,
-                            tint = Color(0xFFBBBBBB),
-                            modifier = Modifier.size(40.dp)
-                        )
-                    }
+                    ) { Text("📦", fontSize = 32.sp) }
                 }
 
-                // Badge status (HILANG / DITEMUKAN)
-                StatusBadge(
-                    status = post.status,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                )
+                val badgeColor = if (laporan.status == "HILANG") RedLost else GreenFound
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                        .clip(RoundedCornerShape(50)).background(badgeColor)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(laporan.status, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 9.sp)
+                }
             }
 
-            // ── Info ─────────────────────────────────────────────────
             Column(modifier = Modifier.padding(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(18.dp).clip(CircleShape).background(PinkLight),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = laporan.username.firstOrNull()?.toString() ?: "?",
+                            fontSize = 9.sp, color = FindUpPink, fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = laporan.username,
+                        fontSize = 10.sp, color = TextSecondary,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(Modifier.height(4.dp))
+
                 Text(
-                    text = post.title,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                    color = TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    text = laporan.namaBarang,
+                    fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextPrimary,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(Modifier.height(4.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Outlined.LocationOn,
-                        contentDescription = null,
-                        tint = TextSecondary,
-                        modifier = Modifier.size(12.dp)
-                    )
+                    Icon(Icons.Outlined.LocationOn, contentDescription = null,
+                        tint = TextSecondary, modifier = Modifier.size(12.dp))
                     Spacer(Modifier.width(2.dp))
-                    Text(
-                        text = post.location,
-                        fontSize = 11.sp,
-                        color = TextSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Text(laporan.lokasi, fontSize = 11.sp, color = TextSecondary,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
     }
 }
 
-// ────────────────────────────────────────────────────────────────────
-// STATUS BADGE
-// ────────────────────────────────────────────────────────────────────
 @Composable
-fun StatusBadge(status: PostStatus, modifier: Modifier = Modifier) {
-    val bgColor   = if (status == PostStatus.HILANG) RedLost else GreenFound
-    val label     = if (status == PostStatus.HILANG) "HILANG" else "DITEMUKAN"
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(bgColor)
-            .padding(horizontal = 8.dp, vertical = 3.dp)
-    ) {
-        Text(
-            text = label,
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 9.sp,
-            letterSpacing = 0.5.sp
-        )
+fun TopAppBarSection() {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier.size(36.dp).clip(CircleShape).background(PinkLight),
+            contentAlignment = Alignment.Center
+        ) { Text("F", color = FindUpPink, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+        Spacer(Modifier.width(8.dp))
+        Text("FindUp", color = FindUpPink, fontWeight = FontWeight.Bold, fontSize = 22.sp)
     }
 }
 
-// ────────────────────────────────────────────────────────────────────
-// BOTTOM NAVIGATION
-// ────────────────────────────────────────────────────────────────────
+// ── SearchBar sekarang terima query dan onQueryChange dari luar ───────────────
+@Composable
+fun SearchBar(
+    query: String = "",
+    onQueryChange: (String) -> Unit = {}
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text("Cari nama, lokasi, kategori...", color = TextSecondary, fontSize = 14.sp) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary) },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Text("✕", fontSize = 14.sp, color = TextSecondary)
+                }
+            }
+        },
+        shape = RoundedCornerShape(50),
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = FindUpPink,
+            unfocusedBorderColor = Color(0xFFE0E0E0),
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White
+        ),
+        modifier = Modifier.fillMaxWidth().height(52.dp)
+    )
+}
+
+@Composable
+fun FilterRow(filters: List<String>, selectedIndex: Int, onFilterSelected: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        filters.forEachIndexed { index, label ->
+            val isSelected = index == selectedIndex
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.clip(RoundedCornerShape(50))
+                    .background(if (isSelected) FindUpPink else Color.Transparent)
+                    .border(1.dp, if (isSelected) FindUpPink else PinkBorder, RoundedCornerShape(50))
+                    .clickable { onFilterSelected(index) }
+                    .padding(horizontal = 18.dp, vertical = 8.dp)
+            ) {
+                Text(label,
+                    color = if (isSelected) Color.White else FindUpPink,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    fontSize = 13.sp)
+            }
+            Spacer(Modifier.width(8.dp))
+        }
+        Spacer(Modifier.weight(1f))
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp))
+                .background(PinkLight).clickable { }
+        ) { Icon(Icons.Outlined.Tune, contentDescription = "Filter", tint = FindUpPink) }
+    }
+}
+
 @Composable
 fun BottomNavBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
-    NavigationBar(
-        containerColor = Color.White,
-        tonalElevation = 8.dp
-    ) {
+    NavigationBar(containerColor = Color.White, tonalElevation = 8.dp) {
         NavigationBarItem(
-            selected = selectedTab == 0,
-            onClick  = { onTabSelected(0) },
-            icon     = { Icon(Icons.Default.Home, contentDescription = "Beranda") },
-            label    = { Text("Beranda", fontSize = 11.sp) },
-            colors   = NavigationBarItemDefaults.colors(
-                selectedIconColor   = FindUpPink,
-                selectedTextColor   = FindUpPink,
-                indicatorColor      = PinkLight,
-                unselectedIconColor = TextSecondary,
-                unselectedTextColor = TextSecondary
-            )
+            selected = selectedTab == 0, onClick = { onTabSelected(0) },
+            icon = { Icon(Icons.Default.Home, contentDescription = "Beranda") },
+            label = { Text("Beranda", fontSize = 11.sp) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = FindUpPink, selectedTextColor = FindUpPink,
+                indicatorColor = PinkLight, unselectedIconColor = TextSecondary, unselectedTextColor = TextSecondary)
         )
         NavigationBarItem(
-            selected = selectedTab == 1,
-            onClick  = { onTabSelected(1) },
-            icon     = { Icon(Icons.Default.List, contentDescription = "Laporanku") },
-            label    = { Text("Laporanku", fontSize = 11.sp) },
-            colors   = NavigationBarItemDefaults.colors(
-                selectedIconColor   = FindUpPink,
-                selectedTextColor   = FindUpPink,
-                indicatorColor      = PinkLight,
-                unselectedIconColor = TextSecondary,
-                unselectedTextColor = TextSecondary
-            )
+            selected = selectedTab == 1, onClick = { onTabSelected(1) },
+            icon = { Icon(Icons.Default.List, contentDescription = "Laporanku") },
+            label = { Text("Laporanku", fontSize = 11.sp) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = FindUpPink, selectedTextColor = FindUpPink,
+                indicatorColor = PinkLight, unselectedIconColor = TextSecondary, unselectedTextColor = TextSecondary)
         )
         NavigationBarItem(
-            selected = selectedTab == 2,
-            onClick  = { onTabSelected(2) },
-            icon     = { Icon(Icons.Default.Person, contentDescription = "Profil") },
-            label    = { Text("Profil", fontSize = 11.sp) },
-            colors   = NavigationBarItemDefaults.colors(
-                selectedIconColor   = FindUpPink,
-                selectedTextColor   = FindUpPink,
-                indicatorColor      = PinkLight,
-                unselectedIconColor = TextSecondary,
-                unselectedTextColor = TextSecondary
-            )
+            selected = selectedTab == 2, onClick = { onTabSelected(2) },
+            icon = { Icon(Icons.Default.Person, contentDescription = "Profil") },
+            label = { Text("Profil", fontSize = 11.sp) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = FindUpPink, selectedTextColor = FindUpPink,
+                indicatorColor = PinkLight, unselectedIconColor = TextSecondary, unselectedTextColor = TextSecondary)
         )
-    }
-}
-
-// ────────────────────────────────────────────────────────────────────
-// PREVIEW
-// ────────────────────────────────────────────────────────────────────
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun HomeScreenPreview() {
-
-    val navController = rememberNavController()
-    MaterialTheme {
-        HomeScreen(navController)
     }
 }

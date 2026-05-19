@@ -26,9 +26,20 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import com.example.findup.R
+//Firebase
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import androidx.navigation.NavController
 
 @Composable
-fun RegistrasiScreen() {
+fun RegistrasiScreen(navController: NavController) {
+    //register
+    val context = LocalContext.current
+    val auth = FirebaseAuth.getInstance()
+    val firestore = FirebaseFirestore.getInstance()
+
     val pinkButton = Color(0xFFEFA7A9)
     val pinkLight = Color(0xFFEFA7A9)
 
@@ -196,7 +207,60 @@ fun RegistrasiScreen() {
 
                     // Tombol Daftar
                     Button(
-                        onClick = { },
+                        onClick = {
+
+                            if (username.isEmpty() || password.isEmpty() || konfirmasiPassword.isEmpty()) {
+                                Toast.makeText(context, "Semua field harus diisi", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+
+                            if (password != konfirmasiPassword) {
+                                Toast.makeText(context, "Password tidak sama", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+
+                            val cleanUsername = username.replace(" ", "")
+                            val emailDummy = "${cleanUsername}@gmail.com"
+
+                            auth.createUserWithEmailAndPassword(emailDummy, password)
+                                .addOnCompleteListener { task ->
+
+                                    if (task.isSuccessful) {
+
+                                        val userId = auth.currentUser?.uid
+
+                                        val userData = hashMapOf(
+                                            "username" to username,
+                                            "uid" to userId
+                                        )
+
+                                        if (userId != null) {
+                                            firestore.collection("users")
+                                                .document(userId)
+                                                .set(userData)
+                                                .addOnSuccessListener {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Registrasi berhasil",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                    navController.navigate("login") {
+                                                        popUpTo("register") { inclusive = true }
+                                                    }
+                                                }
+                                        }
+
+
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            task.exception?.message,
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                        },
+
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(55.dp),
@@ -218,7 +282,9 @@ fun RegistrasiScreen() {
                             text = "Masuk di sini",
                             color = pinkButton,
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.clickable { }
+                            modifier = Modifier.clickable {
+                                navController.navigate("login")
+                            }
                         )
                     }
                 }

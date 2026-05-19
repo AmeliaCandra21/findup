@@ -18,23 +18,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.findup.R
-import com.google.firebase.auth.FirebaseAuth
-import android.widget.Toast
 
 @Composable
 fun LoginScreen() {
 
-    var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-
-    val auth = FirebaseAuth.getInstance()
-    val context = LocalContext.current
 
     val pinkButton = Color(0xFFEFA7A9)
     val pinkLight = Color(0xFFEFA7A9)
@@ -110,9 +104,9 @@ fun LoginScreen() {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        placeholder = { Text("Masukkan Email", color = Color.LightGray) },
+                        value = username,
+                        onValueChange = { username = it },
+                        placeholder = { Text("Masukkan Username", color = Color.LightGray) },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Outlined.Email,
@@ -178,40 +172,7 @@ fun LoginScreen() {
                     Spacer(modifier = Modifier.height(30.dp))
 
                     Button(
-                        onClick =  {
-
-                            if (email.isNotEmpty() && password.isNotEmpty()) {
-
-                                auth.signInWithEmailAndPassword(email, password)
-                                    .addOnCompleteListener { task ->
-
-                                        if (task.isSuccessful) {
-
-                                            Toast.makeText(
-                                                context,
-                                                "Login Berhasil",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-
-                                        } else {
-
-                                            Toast.makeText(
-                                                context,
-                                                "Login Gagal: ${task.exception?.message}",
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                        }
-                                    }
-
-                            } else {
-
-                                Toast.makeText(
-                                    context,
-                                    "Email dan Password wajib diisi",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        },
+                        onClick = { },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(55.dp),
