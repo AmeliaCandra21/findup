@@ -108,7 +108,7 @@ fun ChatScreen(
                 onSend = {
                     val text = inputText.trim()
                     if (text.isNotEmpty() && currentUserId.isNotEmpty()) {
-                        viewModel.kirimPesan(chatId, currentUserId, text)
+                        viewModel.kirimPesan(chatId, currentUserId, contactUserId, text)
                         inputText = ""
                         coroutineScope.launch {
                             if (messages.isNotEmpty()) {

@@ -19,9 +19,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FindUpTheme {
-<<<<<<< HEAD
-                LoginScreen()
-=======
                 val navController = rememberNavController()
                 val user = FirebaseAuth.getInstance().currentUser
                 val startDestination = if (user != null) "main" else "register"
@@ -34,7 +31,6 @@ class MainActivity : ComponentActivity() {
                     composable("login")    { LoginScreen(navController) }
                     composable("main") { AppNav(rootNavController = navController) }
                 }
->>>>>>> origin/main
             }
         }
     }

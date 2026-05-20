@@ -70,25 +70,46 @@ fun AppNav(rootNavController: NavController) {
                 HomeScreen(navController = navController)
             }
             composable("laporan") {
-                LaporanScreen(
-                    navController = navController
-                )
+                LaporanScreen(navController = navController)
             }
             composable("profil") {
                 ProfileScreen(navController = rootNavController)
             }
             composable("TambahLaporan") {
                 TambahLaporanScreen(
-                    onBackClick = { navController.popBackStack() } // ← cukup popBackStack saja
+                    onBackClick = { navController.popBackStack() }
                 )
             }
+
+            // ── Inbox ──────────────────────────────────────────────
+            composable("Inbox") {
+                InboxScreen(navController = navController)
+            }
+
+            // ── Chat dari Inbox (tanpa barang) ─────────────────────
+            composable(
+                route = "ChatDariInbox/{contactId}/{contactName}",
+                arguments = listOf(
+                    navArgument("contactId")   { type = NavType.StringType },
+                    navArgument("contactName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val contactId   = backStackEntry.arguments?.getString("contactId")   ?: ""
+                val contactName = backStackEntry.arguments?.getString("contactName") ?: "User"
+                ChatScreen(
+                    contactUserId = contactId,
+                    contactName   = contactName,
+                    onBack        = { navController.popBackStack() }
+                )
+            }
+
             composable(
                 route = "EditLaporan/{laporanId}",
                 arguments = listOf(navArgument("laporanId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val laporanId = backStackEntry.arguments?.getString("laporanId") ?: ""
                 EditLaporanScreen(
-                    laporanId = laporanId,
+                    laporanId   = laporanId,
                     onBackClick = { navController.popBackStack() }
                 )
             }
@@ -98,7 +119,7 @@ fun AppNav(rootNavController: NavController) {
             ) { backStackEntry ->
                 val laporanId = backStackEntry.arguments?.getString("laporanId") ?: ""
                 DetailBarangScreen(
-                    laporanId = laporanId,
+                    laporanId   = laporanId,
                     onBackClick = { navController.popBackStack() },
                     onChatClick = { userId, username, namaBarang, fotoUrl ->
                         navController.navigate("Chat/$userId/$username/$namaBarang/$fotoUrl")
@@ -108,20 +129,21 @@ fun AppNav(rootNavController: NavController) {
             composable(
                 route = "Chat/{userId}/{username}/{namaBarang}/{fotoUrl}",
                 arguments = listOf(
-                    navArgument("userId") { type = NavType.StringType },
-                    navArgument("username") { type = NavType.StringType },
-                    navArgument("namaBarang") { type = NavType.StringType },
-                    navArgument("fotoUrl") { type = NavType.StringType }
+                    navArgument("userId")    { type = NavType.StringType },
+                    navArgument("username")  { type = NavType.StringType },
+                    navArgument("namaBarang"){ type = NavType.StringType },
+                    navArgument("fotoUrl")   { type = NavType.StringType }
                 )
             ) { backStackEntry ->
-                val userId     = backStackEntry.arguments?.getString("userId") ?: ""
-                val username   = backStackEntry.arguments?.getString("username") ?: ""
+                val userId     = backStackEntry.arguments?.getString("userId")     ?: ""
+                val username   = backStackEntry.arguments?.getString("username")   ?: ""
                 val namaBarang = backStackEntry.arguments?.getString("namaBarang") ?: ""
-                val fotoUrl    = backStackEntry.arguments?.getString("fotoUrl") ?: ""
+                val fotoUrl    = backStackEntry.arguments?.getString("fotoUrl")    ?: ""
                 ChatScreen(
-                    contactName  = username,
-                    contactPhoto = fotoUrl.ifEmpty { null },
-                    barangTemuan = com.example.findup.screen.ItemBaanTemuan(
+                    contactUserId = userId,
+                    contactName   = username,
+                    contactPhoto  = fotoUrl.ifEmpty { null },
+                    barangTemuan  = com.example.findup.screen.ItemBaanTemuan(
                         title    = "Tentang: $namaBarang",
                         desc     = "Hubungi pelapor untuk info lebih lanjut",
                         imageUrl = fotoUrl.ifEmpty { null }
