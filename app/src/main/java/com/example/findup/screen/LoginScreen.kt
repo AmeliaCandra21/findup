@@ -28,20 +28,20 @@ import com.example.findup.R
 @Composable
 fun LoginScreen(navController: NavController) {
 
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var username  by remember { mutableStateOf("") }
+    var password  by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMsg  by remember { mutableStateOf("") }
 
     val pinkButton = Color(0xFFEFA7A9)
-    val pinkLight = Color(0xFFEFA7A9)
-    val grayField = Color(0xFFF2F2F2)
+    val pinkLight  = Color(0xFFEFA7A9)
+    val grayField  = Color(0xFFF2F2F2)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
     ) {
-
-
         Box(
             modifier = Modifier
                 .size(300.dp)
@@ -61,9 +61,7 @@ fun LoginScreen(navController: NavController) {
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Spacer(modifier = Modifier.height(80.dp))
-
 
             Image(
                 painter = painterResource(id = R.drawable.logo_findup),
@@ -72,7 +70,6 @@ fun LoginScreen(navController: NavController) {
             )
 
             Spacer(modifier = Modifier.height(12.dp))
-
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
@@ -87,21 +84,12 @@ fun LoginScreen(navController: NavController) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(4.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp)
-                ) {
+                Column(modifier = Modifier.padding(24.dp)) {
 
-                    Text(
-                        text = "Username",
-                        fontWeight = FontWeight.Medium,
-                        color = Color.Black
-                    )
-
+                    Text("Username", fontWeight = FontWeight.Medium, color = Color.Black)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     OutlinedTextField(
@@ -109,11 +97,7 @@ fun LoginScreen(navController: NavController) {
                         onValueChange = { username = it },
                         placeholder = { Text("Masukkan Username", color = Color.LightGray) },
                         leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.Email,
-                                contentDescription = null,
-                                tint = Color.LightGray
-                            )
+                            Icon(Icons.Outlined.Email, contentDescription = null, tint = Color.LightGray)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -127,17 +111,12 @@ fun LoginScreen(navController: NavController) {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Label Password + Lupa Password
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Password",
-                            fontWeight = FontWeight.Medium,
-                            color = Color.Black
-                        )
+                        Text("Password", fontWeight = FontWeight.Medium, color = Color.Black)
                         Text(
                             text = "Lupa Password?",
                             color = pinkButton,
@@ -153,11 +132,7 @@ fun LoginScreen(navController: NavController) {
                         onValueChange = { password = it },
                         placeholder = { Text("Masukkan Password", color = Color.LightGray) },
                         leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.Lock,
-                                contentDescription = null,
-                                tint = Color.LightGray
-                            )
+                            Icon(Icons.Outlined.Lock, contentDescription = null, tint = Color.LightGray)
                         },
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
@@ -173,19 +148,50 @@ fun LoginScreen(navController: NavController) {
                     Spacer(modifier = Modifier.height(30.dp))
 
                     Button(
-                        onClick = { },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(55.dp),
+                        onClick = {
+                            if (username.isBlank() || password.isBlank()) {
+                                errorMsg = "Username dan password tidak boleh kosong"
+                                return@Button
+                            }
+                            isLoading = true
+                            errorMsg  = ""
+                            com.google.firebase.auth.FirebaseAuth.getInstance()
+                                .signInWithEmailAndPassword(username.trim(), password.trim())
+                                .addOnSuccessListener {
+                                    isLoading = false
+                                    navController.navigate("main") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                }
+                                .addOnFailureListener {
+                                    isLoading = false
+                                    errorMsg = "Login gagal. Periksa kembali email/password"
+                                }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(55.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = pinkButton
-                        )
+                        colors = ButtonDefaults.buttonColors(containerColor = pinkButton),
+                        enabled = !isLoading
                     ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Masuk Ke Akun", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                        }
+                    }
+
+                    if (errorMsg.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "Masuk Ke Akun",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp
+                            errorMsg,
+                            color = Color.Red,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
 
@@ -200,7 +206,9 @@ fun LoginScreen(navController: NavController) {
                             text = "Daftar sekarang",
                             color = pinkButton,
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.clickable { }
+                            modifier = Modifier.clickable {
+                                navController.navigate("register")
+                            }
                         )
                     }
                 }
