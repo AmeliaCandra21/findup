@@ -22,17 +22,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.findup.R
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
-import com.google.firebase.auth.FirebaseAuth
 import androidx.navigation.NavController
+import com.example.findup.R
 
 @Composable
 fun LoginScreen(navController: NavController) {
-
-    val context = LocalContext.current
-    val auth = FirebaseAuth.getInstance()
 
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -148,9 +142,7 @@ fun LoginScreen(navController: NavController) {
                             text = "Lupa Password?",
                             color = pinkButton,
                             fontSize = 12.sp,
-                            modifier = Modifier.clickable {
-                                navController.navigate("register")
-                            }
+                            modifier = Modifier.clickable { }
                         )
                     }
 
@@ -181,46 +173,7 @@ fun LoginScreen(navController: NavController) {
                     Spacer(modifier = Modifier.height(30.dp))
 
                     Button(
-                        onClick = {
-
-                            if (username.isEmpty() || password.isEmpty()) {
-                                Toast.makeText(
-                                    context,
-                                    "Username dan password wajib diisi",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-
-                                return@Button
-                            }
-
-                            val cleanUsername = username.replace(" ", "")
-                            val emailDummy = "${cleanUsername}@gmail.com"
-
-                            auth.signInWithEmailAndPassword(emailDummy, password)
-                                .addOnCompleteListener { task ->
-
-                                    if (task.isSuccessful) {
-
-                                        Toast.makeText(
-                                            context,
-                                            "Login berhasil",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                        navController.navigate("main") {
-                                            popUpTo("login") { inclusive = true }
-                                        }
-                                        // pindah halaman nanti di sini
-
-                                    } else {
-
-                                        Toast.makeText(
-                                            context,
-                                            "Username atau password salah",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
-                        },
+                        onClick = { },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(55.dp),
@@ -247,9 +200,7 @@ fun LoginScreen(navController: NavController) {
                             text = "Daftar sekarang",
                             color = pinkButton,
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.clickable {
-                                navController.navigate("register")
-                            }
+                            modifier = Modifier.clickable { }
                         )
                     }
                 }

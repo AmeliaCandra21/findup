@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -104,7 +105,7 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(Modifier.height(16.dp))
-            TopAppBarSection()
+            TopAppBarSection(onChatClick = { navController.navigate("Inbox") })
             Spacer(Modifier.height(16.dp))
 
             // ── Search bar sekarang terhubung ke state ────────────────
@@ -292,7 +293,7 @@ fun LaporanCard(laporan: Laporan, onClick: () -> Unit = {}) {
 }
 
 @Composable
-fun TopAppBarSection() {
+fun TopAppBarSection(onChatClick: () -> Unit = {}) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier.size(36.dp).clip(CircleShape).background(PinkLight),
@@ -300,6 +301,15 @@ fun TopAppBarSection() {
         ) { Text("F", color = FindUpPink, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
         Spacer(Modifier.width(8.dp))
         Text("FindUp", color = FindUpPink, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onChatClick) {
+            Icon(
+                imageVector = Icons.Outlined.ChatBubbleOutline,
+                contentDescription = "Pesan",
+                tint = FindUpPink,
+                modifier = Modifier.size(26.dp)
+            )
+        }
     }
 }
 

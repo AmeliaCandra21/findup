@@ -2,6 +2,7 @@ package com.example.findup.viewmodel
 
 import android.app.Application
 import android.net.Uri
+import androidx.compose.runtime.withCompositionLocals
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.findup.data.Laporan
@@ -169,7 +170,7 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
             }
     }
     // Kirim pesan ke Firestore
-    fun kirimPesan(chatId: String, senderId: String, text: String) {
+    fun kirimPesan(chatId: String, senderId: String, receiverId: String, text: String) {
         val pesan = mapOf(
             "senderId" to senderId,
             "text" to text,
@@ -179,6 +180,16 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
             .document(chatId)
             .collection("messages")
             .add(pesan)
+
+        val meta = mapOf(
+            "participants" to listOf(senderId, receiverId),
+            "lastMessage" to text,
+            "lastTimestamp" to System.currentTimeMillis(),
+            "lastSenderId" to senderId
+        )
+        firestore.collection("chats")
+            .document(chatId)
+            .set(meta, com.google.firebase.firestore.SetOptions.merge())
     }
 
     // Dengarkan pesan real-time
@@ -189,6 +200,19 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
             .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, _ ->
                 val list = snapshot?.documents?.mapNotNull { it.data } ?: emptyList()
+                onUpdate(list)
+            }
+    }
+
+    // Ambil daftar inbox
+    fun getInboxChats(userId: String, onUpdate: (List<Map<String, Any>>) -> Unit) {
+        firestore.collection("chats")
+            .whereArrayContains("participants", userId)
+            .orderBy("lastTimestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshots, _ ->
+                val list = snapshots?.documents?.mapNotNull { documentSnapshot ->
+                    documentSnapshot.data?.toMutableMap()?.also { it["chatId"] = documentSnapshot.id }
+                } ?: emptyList()
                 onUpdate(list)
             }
     }
