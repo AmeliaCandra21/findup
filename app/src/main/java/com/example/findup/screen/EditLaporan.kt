@@ -54,6 +54,7 @@ fun EditLaporanScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var isUploading by remember { mutableStateOf(false) }
+    var selectedStatus by remember { mutableStateOf("HILANG") }
 
     val datePickerState = rememberDatePickerState()
 
@@ -72,6 +73,7 @@ fun EditLaporanScreen(
                     deskripsi = it.deskripsi
                     lokasi = it.lokasi
                     existingFotoUrl = it.fotoUrl
+                    selectedStatus = it.status
                 }
                 isLoading = false
             }
@@ -127,7 +129,54 @@ fun EditLaporanScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Foto Barang
+
+            // ── Kategori Laporan ──────────────────────────────────────
+            Text(text = "Kategori Laporan", fontSize = 14.sp, color = grayText)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF5F5F5))
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(if (selectedStatus == "HILANG") Color(0xFFFFE4E4) else Color.Transparent)
+                        .clickable { selectedStatus = "HILANG" }
+                        .padding(vertical = 12.dp)
+                ) {
+                    Text(
+                        text = "Hilang",
+                        fontSize = 14.sp,
+                        fontWeight = if (selectedStatus == "HILANG") FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selectedStatus == "HILANG") Color(0xFFE8737A) else Color.Gray
+                    )
+                }
+
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(if (selectedStatus == "DITEMUKAN") Color(0xFFFFE4E4) else Color.Transparent)
+                        .clickable { selectedStatus = "DITEMUKAN" }
+                        .padding(vertical = 12.dp)
+                ) {
+                    Text(
+                        text = "Ditemukan",
+                        fontSize = 14.sp,
+                        fontWeight = if (selectedStatus == "DITEMUKAN") FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selectedStatus == "DITEMUKAN") Color(0xFF4CAF50) else Color.Gray
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ── Foto Barang ───────────────────────────────────────────
             Text(text = "Foto Barang", fontSize = 14.sp, color = grayText)
             Spacer(modifier = Modifier.height(8.dp))
             Box(
@@ -308,7 +357,6 @@ fun EditLaporanScreen(
                                 onBackClick()
                             },
                             onFailure = {
-                                // Gagal upload, pakai foto lama
                                 viewModel.updateLaporan(
                                     id = laporanId,
                                     namaBarang = namaBarang,

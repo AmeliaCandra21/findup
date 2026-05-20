@@ -104,12 +104,31 @@ fun ProfileScreen(navController: NavController? = null) {
             try {
                 val inputStream    = context.contentResolver.openInputStream(uri)
                 val originalBitmap = BitmapFactory.decodeStream(inputStream)
-                val resized        = Bitmap.createScaledBitmap(originalBitmap, 300, 300, true)
 
-                val outputStream   = ByteArrayOutputStream()
+                // Fix rotasi
+                val inputStream2 = context.contentResolver.openInputStream(uri)
+                val exif = androidx.exifinterface.media.ExifInterface(inputStream2!!)
+                val rotation = exif.getAttributeInt(
+                    androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+                )
+                val matrix = android.graphics.Matrix()
+                when (rotation) {
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90  -> matrix.postRotate(90f)
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                }
+                val rotatedBitmap = Bitmap.createBitmap(originalBitmap, 0, 0, originalBitmap.width, originalBitmap.height, matrix, true)
+                val size = minOf(rotatedBitmap.width, rotatedBitmap.height)
+                val x = (rotatedBitmap.width - size) / 2
+                val y = (rotatedBitmap.height - size) / 2
+                val cropped = Bitmap.createBitmap(rotatedBitmap, x, y, size, size)
+                val resized = Bitmap.createScaledBitmap(cropped, 300, 300, true)
+
+                val outputStream = ByteArrayOutputStream()
                 resized.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)
-                val base64String   = Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT)
-                val dataUri        = "data:image/jpeg;base64,$base64String"
+                val base64String = Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT)
+                val dataUri = "data:image/jpeg;base64,$base64String"
 
                 db.collection("users").document(uid)
                     .update("photoUrl", dataUri)
@@ -178,7 +197,7 @@ fun ProfileScreen(navController: NavController? = null) {
 
         if (isLoading) {
             Box(
-                modifier         = Modifier
+                modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
@@ -224,8 +243,8 @@ fun ProfileScreen(navController: NavController? = null) {
 
                             // Lingkaran putih border avatar
                             Box(
-                                modifier         = Modifier
-                                    .size(82.dp)
+                                modifier = Modifier
+                                    .size(110.dp)
                                     .clip(CircleShape)
                                     .background(Color.White),
                                 contentAlignment = Alignment.Center
@@ -241,7 +260,7 @@ fun ProfileScreen(navController: NavController? = null) {
                                                 contentDescription = "Foto Profil",
                                                 contentScale       = ContentScale.Crop,
                                                 modifier           = Modifier
-                                                    .size(74.dp)
+                                                    .size(100.dp)
                                                     .clip(CircleShape)
                                             )
                                         } else {
@@ -255,7 +274,7 @@ fun ProfileScreen(navController: NavController? = null) {
                                             contentDescription = "Foto Profil",
                                             contentScale       = ContentScale.Crop,
                                             modifier           = Modifier
-                                                .size(74.dp)
+                                                .size(100.dp)
                                                 .clip(CircleShape)
                                         )
                                     }
@@ -378,13 +397,6 @@ fun ProfileScreen(navController: NavController? = null) {
                             )
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text     = uid.take(12) + "...",
-                        fontSize = 12.sp,
-                        color    = Color(0xFF9E9E9E)
-                    )
                     Spacer(modifier = Modifier.height(20.dp))
                 }
             }
@@ -417,20 +429,6 @@ fun ProfileScreen(navController: NavController? = null) {
                             fontSize   = 13.sp,
                             fontWeight = FontWeight.Medium,
                             color      = Color(0xFF212121)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("User ID", fontSize = 13.sp, color = Color(0xFF9E9E9E))
-                        Text(
-                            text     = uid.take(12) + "...",
-                            fontSize = 12.sp,
-                            color    = Color(0xFF9E9E9E)
                         )
                     }
                 }

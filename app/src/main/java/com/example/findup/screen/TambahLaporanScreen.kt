@@ -101,56 +101,48 @@ fun TambahLaporanScreen(
         ) {
 
             // ── 1. PILIHAN STATUS ─────────────────────────────────────
-            Text(text = "Jenis Laporan", fontSize = 12.sp, color = Color.Gray)
+            Text(text = "Kategori Laporan", fontSize = 12.sp, color = Color.Gray)
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row(modifier = Modifier.fillMaxWidth()) {
-                val hilangSelected = selectedStatus == "HILANG"
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF5F5F5))
+            ) {
+                // Tab Hilang
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (hilangSelected) Color(0xFFE53935) else Color(0xFFF5F5F5))
-                        .border(1.dp, if (hilangSelected) Color(0xFFE53935) else Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+                        .background(if (selectedStatus == "HILANG") Color(0xFFFFE4E4) else Color.Transparent)
                         .clickable { selectedStatus = "HILANG" }
-                        .padding(vertical = 14.dp)
+                        .padding(vertical = 12.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("🔍", fontSize = 22.sp)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Saya Kehilangan",
-                            fontSize = 13.sp,
-                            fontWeight = if (hilangSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (hilangSelected) Color.White else Color.Gray
-                        )
-                    }
+                    Text(
+                        text = "Hilang",
+                        fontSize = 14.sp,
+                        fontWeight = if (selectedStatus == "HILANG") FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selectedStatus == "HILANG") Color(0xFFE8737A) else Color.Gray
+                    )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                val ditemukanSelected = selectedStatus == "DITEMUKAN"
+                // Tab Ditemukan
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (ditemukanSelected) Color(0xFF4CAF50) else Color(0xFFF5F5F5))
-                        .border(1.dp, if (ditemukanSelected) Color(0xFF4CAF50) else Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+                        .background(if (selectedStatus == "DITEMUKAN") Color(0xFFFFE4E4) else Color.Transparent)
                         .clickable { selectedStatus = "DITEMUKAN" }
-                        .padding(vertical = 14.dp)
+                        .padding(vertical = 12.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("📦", fontSize = 22.sp)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Saya Menemukan",
-                            fontSize = 13.sp,
-                            fontWeight = if (ditemukanSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (ditemukanSelected) Color.White else Color.Gray
-                        )
-                    }
+                    Text(
+                        text = "Ditemukan",
+                        fontSize = 14.sp,
+                        fontWeight = if (selectedStatus == "DITEMUKAN") FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selectedStatus == "DITEMUKAN") Color(0xFF4CAF50) else Color.Gray
+                    )
                 }
             }
 
