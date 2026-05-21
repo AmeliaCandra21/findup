@@ -2,7 +2,6 @@ package com.example.findup.viewmodel
 
 import android.app.Application
 import android.net.Uri
-import androidx.compose.runtime.withCompositionLocals
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.findup.data.Laporan
@@ -21,18 +20,15 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
     private val auth = FirebaseAuth.getInstance()
     private val storage = FirebaseStorage.getInstance()
 
-    // Ambil semua laporan (feed home - semua user)
     fun getAllLaporan(): Flow<List<Laporan>> {
         return dao.getAllLaporan()
     }
 
-    // Ambil laporan milik user sendiri (LaporanScreen)
     fun getLaporanByUser(): Flow<List<Laporan>> {
         val userId = auth.currentUser?.uid ?: ""
         return dao.getLaporanByUser(userId)
     }
 
-    // Upload foto ke Firebase Storage, dapat URL lewat callback
     fun uploadFoto(
         uri: Uri,
         onSuccess: (String) -> Unit,
@@ -55,7 +51,6 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
             }
     }
 
-    // Simpan laporan — ambil username dulu dari Firestore
     fun simpanLaporan(
         namaBarang: String,
         tanggal: String,
@@ -92,7 +87,85 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
             }
     }
 
-    // Hapus laporan
+    // Offline-first: simpan ke Room dulu, sync ke Firestore kalau online
+    fun simpanLaporanOfflineFirst(
+        namaBarang: String,
+        tanggal: String,
+        noTelepon: String,
+        kategori: String,
+        deskripsi: String,
+        lokasi: String,
+        fotoUri: android.net.Uri? = null,
+        status: String = "HILANG",
+        onDone: () -> Unit = {}
+    ) {
+        val userId = auth.currentUser?.uid ?: ""
+
+        firestore.collection("users").document(userId).get()
+            .addOnSuccessListener { doc ->
+                val username = doc.getString("username") ?: "User"
+                val laporan = Laporan(
+                    id = UUID.randomUUID().toString(),
+                    userId = userId,
+                    username = username,
+                    namaBarang = namaBarang,
+                    tanggal = tanggal,
+                    noTelepon = noTelepon,
+                    kategori = kategori,
+                    deskripsi = deskripsi,
+                    lokasi = lokasi,
+                    fotoUrl = fotoUri?.toString() ?: "",
+                    status = status,
+                    isSynced = false
+                )
+                viewModelScope.launch {
+                    // ✅ Simpan ke Room dulu — langsung muncul di Laporanku
+                    dao.insertLaporan(laporan)
+                    onDone()
+
+                    // ✅ Coba sync ke Firestore (upload foto dulu kalau ada)
+                    if (fotoUri != null) {
+                        uploadFoto(
+                            uri = fotoUri,
+                            onSuccess = { url ->
+                                val updated = laporan.copy(fotoUrl = url)
+                                viewModelScope.launch { dao.updateLaporan(updated) }
+                                syncToFirebase(updated)
+                            },
+                            onFailure = {
+                                // Gagal upload foto, sync tanpa foto
+                                syncToFirebase(laporan.copy(fotoUrl = ""))
+                            }
+                        )
+                    } else {
+                        syncToFirebase(laporan)
+                    }
+                }
+            }
+            .addOnFailureListener {
+                // Offline — simpan ke Room saja dulu
+                val username = auth.currentUser?.displayName ?: "User"
+                val laporan = Laporan(
+                    id = UUID.randomUUID().toString(),
+                    userId = userId,
+                    username = username,
+                    namaBarang = namaBarang,
+                    tanggal = tanggal,
+                    noTelepon = noTelepon,
+                    kategori = kategori,
+                    deskripsi = deskripsi,
+                    lokasi = lokasi,
+                    fotoUrl = fotoUri?.toString() ?: "",
+                    status = status,
+                    isSynced = false
+                )
+                viewModelScope.launch {
+                    dao.insertLaporan(laporan)
+                    onDone()
+                }
+            }
+    }
+
     fun hapusLaporan(laporan: Laporan) {
         viewModelScope.launch {
             dao.deleteLaporan(laporan)
@@ -100,7 +173,6 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    // Ambil laporan by ID (untuk DetailBarang)
     fun getLaporanById(id: String, onResult: (Laporan?) -> Unit) {
         firestore.collection("laporan").document(id).get()
             .addOnSuccessListener { doc ->
@@ -110,7 +182,6 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
             .addOnFailureListener { onResult(null) }
     }
 
-    // Update laporan
     fun updateLaporan(
         id: String,
         namaBarang: String,
@@ -146,7 +217,6 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
             }
     }
 
-    // Sync ke Firebase
     private fun syncToFirebase(laporan: Laporan) {
         firestore.collection("laporan")
             .document(laporan.id)
@@ -158,7 +228,6 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
             }
     }
 
-    // Ambil semua laporan dari Firestore (real-time feed)
     fun fetchAllLaporanFromFirestore(onResult: (List<Laporan>) -> Unit) {
         firestore.collection("laporan")
             .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
@@ -169,30 +238,51 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
                 onResult(list)
             }
     }
-    // Kirim pesan ke Firestore
-    fun kirimPesan(chatId: String, senderId: String, receiverId: String, text: String) {
-        val pesan = mapOf(
-            "senderId" to senderId,
-            "text" to text,
-            "timestamp" to System.currentTimeMillis()
-        )
-        firestore.collection("chats")
-            .document(chatId)
-            .collection("messages")
-            .add(pesan)
 
-        val meta = mapOf(
+    // ✅ FIXED — set metadata dulu, baru add pesan
+    fun kirimPesan(chatId: String, senderId: String, receiverId: String, text: String) {
+        val timestamp = System.currentTimeMillis()
+
+        android.util.Log.d("Chat", "kirimPesan dipanggil")
+        android.util.Log.d("Chat", "chatId: $chatId")
+        android.util.Log.d("Chat", "senderId: $senderId")
+        android.util.Log.d("Chat", "receiverId: $receiverId")
+
+        val meta = hashMapOf(
             "participants" to listOf(senderId, receiverId),
             "lastMessage" to text,
-            "lastTimestamp" to System.currentTimeMillis(),
+            "lastTimestamp" to timestamp,
             "lastSenderId" to senderId
         )
+
         firestore.collection("chats")
             .document(chatId)
-            .set(meta, com.google.firebase.firestore.SetOptions.merge())
+            .set(meta)
+            .addOnSuccessListener {
+                android.util.Log.d("Chat", "metadata berhasil disimpan")
+                val pesan = hashMapOf(
+                    "senderId" to senderId,
+                    "receiverId" to receiverId,
+                    "text" to text,
+                    "timestamp" to timestamp,
+                    "isRead" to false
+                )
+                firestore.collection("chats")
+                    .document(chatId)
+                    .collection("messages")
+                    .add(pesan)
+                    .addOnSuccessListener {
+                        android.util.Log.d("Chat", "pesan berhasil disimpan")
+                    }
+                    .addOnFailureListener { e ->
+                        android.util.Log.e("Chat", "gagal simpan pesan: ${e.message}")
+                    }
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("Chat", "gagal simpan metadata: ${e.message}")
+            }
     }
 
-    // Dengarkan pesan real-time
     fun dengarPesan(chatId: String, onUpdate: (List<Map<String, Any>>) -> Unit) {
         firestore.collection("chats")
             .document(chatId)
@@ -204,15 +294,54 @@ class LaporanViewModel(application: Application) : AndroidViewModel(application)
             }
     }
 
-    // Ambil daftar inbox
+    // Tandai semua pesan sudah dibaca
+    fun tandaiSudahDibaca(chatId: String, userId: String) {
+        firestore.collection("chats")
+            .document(chatId)
+            .collection("messages")
+            .whereEqualTo("receiverId", userId)
+            .whereEqualTo("isRead", false)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                snapshot.documents.forEach { doc ->
+                    doc.reference.update("isRead", true)
+                }
+            }
+    }
+
+    // Hitung pesan belum dibaca per chat
+    fun hitungPesanBelumDibaca(chatId: String, userId: String, onResult: (Int) -> Unit) {
+        firestore.collection("chats")
+            .document(chatId)
+            .collection("messages")
+            .whereEqualTo("receiverId", userId)
+            .whereEqualTo("isRead", false)
+            .addSnapshotListener { snapshot, _ ->
+                onResult(snapshot?.size() ?: 0)
+            }
+    }
+
+    // ✅ FIXED — hapus orderBy, sort di client side
     fun getInboxChats(userId: String, onUpdate: (List<Map<String, Any>>) -> Unit) {
         firestore.collection("chats")
             .whereArrayContains("participants", userId)
-            .orderBy("lastTimestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshots, _ ->
-                val list = snapshots?.documents?.mapNotNull { documentSnapshot ->
-                    documentSnapshot.data?.toMutableMap()?.also { it["chatId"] = documentSnapshot.id }
-                } ?: emptyList()
+            .addSnapshotListener { snapshots, error ->
+                if (error != null) {
+                    android.util.Log.e("Inbox", "Error getInboxChats: ${error.message}")
+                    return@addSnapshotListener
+                }
+                val list = snapshots?.documents
+                    ?.mapNotNull { doc ->
+                        doc.data?.toMutableMap()?.also { it["chatId"] = doc.id }
+                    }
+                    ?.sortedByDescending { map ->
+                        when (val ts = map["lastTimestamp"]) {
+                            is Long   -> ts
+                            is Double -> ts.toLong()
+                            else      -> 0L
+                        }
+                    }
+                    ?: emptyList()
                 onUpdate(list)
             }
     }

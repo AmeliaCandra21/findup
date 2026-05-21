@@ -36,6 +36,9 @@ import coil.compose.AsyncImage
 import com.example.findup.data.Laporan
 import com.example.findup.viewmodel.LaporanViewModel
 import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import com.google.firebase.firestore.FirebaseFirestore
 
 val FindUpPink    = Color(0xFFE8737A)
 val PinkLight     = Color(0xFFFDE8E9)
@@ -61,6 +64,28 @@ fun HomeScreen(
     var semuaLaporan by remember { mutableStateOf<List<Laporan>>(emptyList()) }
     LaunchedEffect(Unit) {
         viewModel.fetchAllLaporanFromFirestore { semuaLaporan = it }
+    }
+    var totalUnread by remember { mutableStateOf(0) }
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isNotEmpty()) {
+            FirebaseFirestore.getInstance()
+                .collection("chats")
+                .whereArrayContains("participants", currentUserId)
+                .addSnapshotListener { snapshots, _ ->
+                    var count = 0
+                    snapshots?.documents?.forEach { doc ->
+                        doc.reference.collection("messages")
+                            .whereEqualTo("receiverId", currentUserId)
+                            .whereEqualTo("isRead", false)
+                            .get()
+                            .addOnSuccessListener { msgs ->
+                                count += msgs.size()
+                                totalUnread = count
+                            }
+                    }
+                    if (snapshots?.isEmpty == true) totalUnread = 0
+                }
+        }
     }
 
     // ── Filter: status + search query ────────────────────────────────
@@ -105,7 +130,8 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(Modifier.height(16.dp))
-            TopAppBarSection(onChatClick = { navController.navigate("Inbox") })
+            TopAppBarSection(onChatClick = { navController.navigate("Inbox") },
+                totalUnread = totalUnread)
             Spacer(Modifier.height(16.dp))
 
             // ── Search bar sekarang terhubung ke state ────────────────
@@ -293,7 +319,7 @@ fun LaporanCard(laporan: Laporan, onClick: () -> Unit = {}) {
 }
 
 @Composable
-fun TopAppBarSection(onChatClick: () -> Unit = {}) {
+fun TopAppBarSection(onChatClick: () -> Unit = {}, totalUnread: Int = 0) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier.size(36.dp).clip(CircleShape).background(PinkLight),
@@ -303,12 +329,20 @@ fun TopAppBarSection(onChatClick: () -> Unit = {}) {
         Text("FindUp", color = FindUpPink, fontWeight = FontWeight.Bold, fontSize = 22.sp)
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onChatClick) {
-            Icon(
-                imageVector = Icons.Outlined.ChatBubbleOutline,
-                contentDescription = "Pesan",
-                tint = FindUpPink,
-                modifier = Modifier.size(26.dp)
-            )
+            BadgedBox(badge = {
+                if (totalUnread > 0) {
+                    Badge {
+                        Text(if (totalUnread > 99) "99+" else totalUnread.toString())
+                    }
+                }
+            }) {
+                Icon(
+                    imageVector = Icons.Outlined.ChatBubbleOutline,
+                    contentDescription = "Pesan",
+                    tint = FindUpPink,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
         }
     }
 }

@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
             FindUpTheme {
                 val navController = rememberNavController()
                 val user = FirebaseAuth.getInstance().currentUser
-                val startDestination = if (user != null) "main" else "register"
+                val startDestination = if (user != null) "main" else "login"
 
                 NavHost(
                     navController    = navController,

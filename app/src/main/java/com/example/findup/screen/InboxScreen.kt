@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -23,9 +22,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.findup.viewmodel.LaporanViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,11 +33,36 @@ fun InboxScreen(
     viewModel: LaporanViewModel = viewModel()
 ) {
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val firestore = FirebaseFirestore.getInstance()
+
     var inboxList by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    var contactNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    // ✅ Map chatId -> unread count
+    var unreadCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
     LaunchedEffect(currentUserId) {
         if (currentUserId.isNotEmpty()) {
-            viewModel.getInboxChats(currentUserId) { inboxList = it }
+            viewModel.getInboxChats(currentUserId) { list ->
+                inboxList = list
+
+                list.forEach { chat ->
+                    val participants = chat["participants"] as? List<*> ?: return@forEach
+                    val contactId = participants.firstOrNull { it != currentUserId } as? String ?: return@forEach
+                    val chatId = chat["chatId"] as? String ?: return@forEach
+
+                    // Ambil nama kontak
+                    firestore.collection("users").document(contactId).get()
+                        .addOnSuccessListener { doc ->
+                            val username = doc.getString("username") ?: "User"
+                            contactNames = contactNames + (contactId to username)
+                        }
+
+                    // ✅ Hitung unread per chat
+                    viewModel.hitungPesanBelumDibaca(chatId, currentUserId) { count ->
+                        unreadCounts = unreadCounts + (chatId to count)
+                    }
+                }
+            }
         }
     }
 
@@ -83,29 +107,26 @@ fun InboxScreen(
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
                 items(inboxList) { chat ->
-                    val chatId      = chat["chatId"] as? String ?: ""
+                    val chatId = chat["chatId"] as? String ?: ""
                     val participants = chat["participants"] as? List<*> ?: emptyList<String>()
-                    val contactId   = participants.firstOrNull { it != currentUserId } as? String ?: ""
+                    val contactId = participants.firstOrNull { it != currentUserId } as? String ?: ""
                     val lastMessage = chat["lastMessage"] as? String ?: ""
                     val lastTimestamp = when (val ts = chat["lastTimestamp"]) {
                         is Long   -> ts
                         is Double -> ts.toLong()
                         else      -> 0L
                     }
-                    val timeStr = remember(lastTimestamp) {
-                        SimpleDateFormat("HH.mm", Locale.getDefault()).format(Date(lastTimestamp))
-                    }
-
-                    // Ambil nama kontak dari chatId (huruf pertama contactId sebagai fallback)
-                    val contactInitial = contactId.firstOrNull()?.toString()?.uppercase() ?: "?"
+                    val timeStr = SimpleDateFormat("HH.mm", Locale.getDefault()).format(Date(lastTimestamp))
+                    val contactName = contactNames[contactId] ?: "..."
+                    val unreadCount = unreadCounts[chatId] ?: 0  // ✅
 
                     InboxItem(
-                        initial     = contactInitial,
-                        contactId   = contactId,
+                        contactName = contactName,
                         lastMessage = lastMessage,
                         time        = timeStr,
+                        unreadCount = unreadCount,  // ✅
                         onClick     = {
-                            navController.navigate("ChatDariInbox/$contactId/$chatId")
+                            navController.navigate("ChatDariInbox/$contactId/$contactName")
                         }
                     )
                     HorizontalDivider(
@@ -120,10 +141,10 @@ fun InboxScreen(
 
 @Composable
 private fun InboxItem(
-    initial     : String,
-    contactId   : String,
+    contactName : String,
     lastMessage : String,
     time        : String,
+    unreadCount : Int,      // ✅
     onClick     : () -> Unit
 ) {
     Row(
@@ -133,34 +154,62 @@ private fun InboxItem(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Avatar
         Box(
             modifier = Modifier.size(48.dp).clip(CircleShape)
                 .background(Color(0xFFFFCDD2)),
             contentAlignment = Alignment.Center
         ) {
-            Text(initial, fontSize = 20.sp,
-                fontWeight = FontWeight.Bold, color = Color(0xFFE8737A))
+            Text(
+                text = contactName.firstOrNull()?.toString()?.uppercase() ?: "?",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFE8737A)
+            )
         }
 
         Spacer(Modifier.width(12.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                // Tampilkan sebagian contactId sebagai nama sementara
-                // nanti bisa diganti dengan nama asli dari Firestore
-                text = "User $initial",
-                fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                text = contactName,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF1A1A2E)
             )
             Spacer(Modifier.height(3.dp))
             Text(
                 text = lastMessage,
-                fontSize = 13.sp, color = Color(0xFF888888),
-                maxLines = 1, overflow = TextOverflow.Ellipsis
+                fontSize = 13.sp,
+                color = if (unreadCount > 0) Color(0xFF1A1A2E) else Color(0xFF888888),  // ✅ bold kalau ada unread
+                fontWeight = if (unreadCount > 0) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
-        Text(time, fontSize = 11.sp, color = Color(0xFF888888))
+        Spacer(Modifier.width(8.dp))
+
+        // ✅ Badge unread count
+        Column(horizontalAlignment = Alignment.End) {
+            Text(time, fontSize = 11.sp,
+                color = if (unreadCount > 0) Color(0xFFE8737A) else Color(0xFF888888))
+            Spacer(Modifier.height(4.dp))
+            if (unreadCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFE8737A)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+        }
     }
 }
